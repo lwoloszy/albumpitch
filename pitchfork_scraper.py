@@ -1,5 +1,6 @@
 import re
 import time
+import argparse
 import requests as r
 import itertools as it
 from datetime import datetime
@@ -144,4 +145,18 @@ def parse_review(html):
 
 
 if __name__ == '__main__':
-    run(page_start=1272, overwrite=False)
+    parser = argparse.ArgumentParser(description='Scrape Rolling Stone site')
+    parser.add_argument('--page_start', default=1, type=int,
+                        help='page from which to start scrape')
+    parser.add_argument('--overwrite', action='store_const',
+                        const=True, default=False,
+                        help='include flag to overwrite mongodb collection')
+    parser.add_argument('--max_tries', default=10, type=int,
+                        help='max number of retries when requesting htmls')
+
+    args = vars(parser.parse_args())
+    page_start = args['page_start']
+    overwrite = args['overwrite']
+    max_tries = args['max_tries']
+
+    run(page_start, max_tries=max_tries, overwrite=overwrite)
