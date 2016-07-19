@@ -53,7 +53,7 @@ def get_review_links(page_num, max_tries=10):
             break
         else:
             print('Request for links on page {:d} failed, {:d} tries left'
-                  .format(max_tries - i - 1))
+                  .format(page_num, max_tries - i - 1))
             time.sleep(5)
 
     return review_links

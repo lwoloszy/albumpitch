@@ -145,7 +145,7 @@ def parse_review(html):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Scrape Rolling Stone site')
+    parser = argparse.ArgumentParser(description='Scrape Pitchfork site')
     parser.add_argument('--page_start', default=1, type=int,
                         help='page from which to start scrape')
     parser.add_argument('--overwrite', action='store_const',
