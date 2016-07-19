@@ -108,7 +108,7 @@ def parse_review(html):
     out['reviewers'] = [reviewer.find('a', {'class': 'display-name'}).text
                         for reviewer in reviewers]
     if len(out['reviewers']) != 1:
-        print len(reviewers)
+        print(len(reviewers))
 
     artists = soup.find('ul', {'class': 'artist-links artist-list'})
     out['artists'] = [artist.text for artist in artists.find_all('li')]
