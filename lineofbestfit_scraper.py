@@ -106,8 +106,18 @@ def parse_review(html):
     soup = BeautifulSoup(html, 'lxml')
     out = {}
 
-    reviewer_fn = soup.find(itemprop='givenName').text
-    reviewer_ln = soup.find(itemprop='familyName').text
+    reviewer_fn = soup.find(itemprop='givenName')
+    if reviewer_fn:
+        reviewer_fn = reviewer_fn.text
+    else:
+        reviewer_fn = ''
+
+    reviewer_ln = soup.find(itemprop='familyName')
+    if reviewer_ln:
+        reviewer_ln = reviewer_ln.text
+    else:
+        reviewer_ln = ''
+        
     out['reviewer'] = reviewer_fn + ' ' + reviewer_ln
 
     artist = soup.find(itemprop='byArtist').text.strip()
