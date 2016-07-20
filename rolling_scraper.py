@@ -25,6 +25,10 @@ def run(page_start, max_tries=10, overwrite=False):
         for page_num in it.count(page_start):
             review_links = get_review_links(page_num, max_tries)
 
+            if empty_ctr > 10:
+                print('10 consecutive requests with invalid response, exiting')
+                break
+
             if not review_links:
                 print('Unable to get review links from page {:d}'.
                       format(page_num))
@@ -32,10 +36,6 @@ def run(page_start, max_tries=10, overwrite=False):
                 continue
             else:
                 empty_ctr = 0
-
-            if empty_ctr > 10:
-                print('10 consecutive requests with invalid response, exiting')
-                break
 
             get_insert_reviews(review_links, coll, max_tries)
     finally:

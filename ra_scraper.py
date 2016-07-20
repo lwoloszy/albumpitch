@@ -26,6 +26,10 @@ def run(year_start, month_start, format_='album',
                 review_links = get_review_links(year, month,
                                                 format_, max_tries)
 
+                if empty_ctr > 10:
+                    print('10 consecutive requests with invalid response, exiting')
+                    break
+
                 if not review_links:
                     print('Unable to get review links from year {:d}, month {:d}'.
                           format(year, month))
@@ -33,10 +37,6 @@ def run(year_start, month_start, format_='album',
                     continue
                 else:
                     empty_ctr = 0
-
-                if empty_ctr > 10:
-                    print('10 consecutive requests with invalid response, exiting')
-                    break
 
                 get_insert_reviews(review_links, coll, max_tries)
     finally:
