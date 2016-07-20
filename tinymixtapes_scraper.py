@@ -124,11 +124,14 @@ def parse_review(html):
 
     meta = soup.find(class_="review-heading__details-top")
     label_and_year = meta.find('p', class_='meta').text.strip('[]')
-    label, year = label_and_year.split('; ')
-    out['label'] = label
-    out['year'] = year
+    try:
+        label, year = label_and_year.split('; ')
+        out['label'] = label
+        out['year'] = year
+    except:
+        out['label_and_year'] = label_and_year
 
-    styles = soup.find(class_='review-heading__details-bottom')
+        styles = soup.find(class_='review-heading__details-bottom')
     styles = styles.text.split('\n')[1].split(': ')[-1].split(',')
     styles = [style.strip() for style in styles]
     out['genres'] = styles
