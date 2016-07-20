@@ -17,6 +17,7 @@ def run(year_start, month_start, format_='album',
     if 'resident_advisor' in db.collection_names() and overwrite:
         db['resident_advisor'].drop()
     coll = db['resident_advisor']
+    coll.create_index('review_id')
 
     try:
         empty_ctr = 0
@@ -83,6 +84,7 @@ def get_insert_reviews(review_links, collection, max_tries=10):
             response = get_review_page(review_link)
             if response.status_code == 200:
                 record = parse_review(response.content)
+                record['review_link'] = review_link
                 rid = record['review_id']
                 if not collection.find({'review_id': rid}).count():
                     collection.insert_one(record)

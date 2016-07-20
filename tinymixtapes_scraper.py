@@ -18,6 +18,7 @@ def run(page_start=1, max_tries=10, overwrite=False):
     if 'tinymixtapes' in db.collection_names() and overwrite:
         db['tinymixtapes'].drop()
     coll = db['tinymixtapes']
+    coll.create_index('review_id')
     try:
         empty_ctr = 0
         for page_num in it.count(page_start):
@@ -85,8 +86,11 @@ def get_insert_reviews(review_links, collection, max_tries=10):
                 if collection.find({'review_id': rid}).count():
                     print('Review {:s} already exists'.format(rid))
                     break
-                record = parse_review(response.content, review_link)
+                record = parse_review(response.content)
+                record['review_id'] = review_link
+                record['review_link'] = review_link
                 collection.insert_one(record)
+                break
             else:
                 print('Request for review {:s} failed, {:d} tries left'
                       .format(review_link, max_tries - i - 1))
@@ -100,11 +104,9 @@ def get_review_page(review_link):
     return response
 
 
-def parse_review(html, review_id):
+def parse_review(html):
     soup = BeautifulSoup(html, 'lxml')
     out = {}
-
-    out['review_id'] = review_id
 
     reviewer = soup.find(itemprop='author').find(itemprop='name').text
     out['reviewer'] = reviewer

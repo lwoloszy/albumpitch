@@ -18,6 +18,7 @@ def run(page_start=1, max_tries=10, overwrite=False):
     if 'pitchfork' in db.collection_names() and overwrite:
         db['pitchfork'].drop()
     coll = db['pitchfork']
+    coll.create_index('review_id')
     try:
         empty_ctr = 0
         for page_num in it.count(page_start):
@@ -79,6 +80,7 @@ def get_insert_reviews(review_links, collection, max_tries=10):
             response = get_review_page(review_link)
             if response.status_code == 200:
                 record = parse_review(response.content)
+                record['review_link'] = review_link
                 rid = record['review_id']
                 if not collection.find({'review_id': rid}).count():
                     collection.insert_one(record)

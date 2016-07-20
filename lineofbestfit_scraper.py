@@ -84,7 +84,9 @@ def get_insert_reviews(review_links, collection, max_tries=10):
                 if collection.find({'review_id': rid}).count() > 0:
                     print('Review {:s} already exists'.format(rid))
                     break
-                record = parse_review(response.content, review_link)
+                record = parse_review(response.content)
+                record['review_id'] = review_link
+                record['review_link'] = review_link
                 collection.insert_one(record)
                 break
             else:
@@ -100,11 +102,9 @@ def get_review_page(review_link):
     return response
 
 
-def parse_review(html, review_id):
+def parse_review(html):
     soup = BeautifulSoup(html, 'lxml')
     out = {}
-
-    out['review_id'] = review_id
 
     reviewer_fn = soup.find(itemprop='givenName').text
     reviewer_ln = soup.find(itemprop='familyName').text
