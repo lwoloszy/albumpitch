@@ -73,12 +73,23 @@ def parse_links(html):
                     for anchor in album_anchors]
     return review_links
 
+
 def get_insert_reviews(review_links, collection, max_tries=10):
     for review_link in review_links:
         for i in xrange(max_tries):
             response = get_review_page(review_link)
             if response.status_code == 200:
-                record = parse_review(response.content)
+                for parser in ['lxml', 'html5lib']:
+                    try:
+                        record = parse_review(response.content, parser)
+                        break
+                    except:
+                        pass
+                else:
+                    print('Bad review{:s}, saving...'.format(review_link))
+                    with open('data/'+review_link, 'w') as f:
+                        f.write(response.content)
+                    break
                 record['review_link'] = review_link
                 rid = record['review_id']
                 if not collection.find({'review_id': rid}).count():
@@ -99,8 +110,8 @@ def get_review_page(review_link):
     return response
 
 
-def parse_review(html):
-    soup = BeautifulSoup(html, 'lxml')
+def parse_review(html, parser='lxml'):
+    soup = BeautifulSoup(html, parser)
     out = {}
 
     out['review_id'] = int(soup.find('article').get('id').split('-')[-1])

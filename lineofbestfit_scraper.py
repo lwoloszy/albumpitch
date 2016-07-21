@@ -21,7 +21,7 @@ def run(page_start=1, max_tries=10, overwrite=False):
     coll.create_index('review_id')
     try:
         empty_ctr = 0
-        for page_num in it.count(page_start):
+        for page_num in it.count(page_start, 8):
             review_links = get_review_links(page_num, max_tries)
 
             if empty_ctr > 10:
