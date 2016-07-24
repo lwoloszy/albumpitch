@@ -1,9 +1,7 @@
-import re
 import time
 import argparse
 import requests as r
 import itertools as it
-from datetime import datetime
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 
@@ -15,10 +13,10 @@ HEADERS = {'User-Agent':
 def run(page_start=1, max_tries=10, overwrite=False):
     client = MongoClient()
     db = client['album_reviews']
-    if 'pitchfork' in db.collection_names() and overwrite:
-        db['pitchfork'].drop()
-    coll = db['pitchfork']
-    coll.create_index('review_id')
+    if 'pitchfork_full' in db.collection_names() and overwrite:
+        db['pitchfork_full'].drop()
+    coll = db['pitchfork_full']
+    coll.create_index('url')
     try:
         empty_ctr = 0
         for page_num in it.count(page_start):
@@ -66,11 +64,16 @@ def get_links_page(page_num):
 
 
 def parse_links(html):
-    # parse html to retrieve list of reviews available on current page
-    soup = BeautifulSoup(html, 'lxml')
-    album_anchors = soup.find_all('a', {'class': 'album-link'})
-    review_links = [anchor.get('href').split('/')[-2]
-                    for anchor in album_anchors]
+    for parser in ['lxml', 'html5lib']:
+        soup = BeautifulSoup(html, parser)
+        album_anchors = soup.find_all('a', {'class': 'album-link'})
+        review_links = [anchor.get('href').split('/')[-2]
+                        for anchor in album_anchors]
+        if review_links:
+            break
+    else:
+        review_links = []
+
     return review_links
 
 
@@ -79,23 +82,13 @@ def get_insert_reviews(review_links, collection, max_tries=10):
         for i in xrange(max_tries):
             response = get_review_page(review_link)
             if response.status_code == 200:
-                for parser in ['lxml', 'html5lib']:
-                    try:
-                        record = parse_review(response.content, parser)
-                        break
-                    except:
-                        pass
+                document = {}
+                document['url'] = review_link
+                document['html'] = response.content
+                if not collection.find({'url': review_link}).count():
+                    collection.insert_one(document)
                 else:
-                    print('Bad review{:s}, saving...'.format(review_link))
-                    with open('data/'+review_link, 'w') as f:
-                        f.write(response.content)
-                    break
-                record['review_link'] = review_link
-                rid = record['review_id']
-                if not collection.find({'review_id': rid}).count():
-                    collection.insert_one(record)
-                else:
-                    print('Review {:d} already exists'.format(rid))
+                    print('Review {:s} already exists'.format(review_link))
                 break
             else:
                 print('Request for review {:s} failed, {:d} tries left'
@@ -108,52 +101,6 @@ def get_review_page(review_link):
     response = session.get(BASE_URL + '/reviews/albums/' + review_link,
                            headers=HEADERS)
     return response
-
-
-def parse_review(html, parser='lxml'):
-    soup = BeautifulSoup(html, parser)
-    out = {}
-
-    out['review_id'] = int(soup.find('article').get('id').split('-')[-1])
-
-    reviewers = soup.find('ul', {'class': 'authors-detail'}).find_all('li')
-    out['reviewers'] = [reviewer.find('a', {'class': 'display-name'}).text
-                        for reviewer in reviewers]
-    if len(out['reviewers']) != 1:
-        print(len(reviewers))
-
-    artists = soup.find('ul', {'class': 'artist-links artist-list'})
-    out['artists'] = [artist.text for artist in artists.find_all('li')]
-    out['album'] = soup.find('h1', {'class': 'review-title'}).text
-
-    out['score'] = float(soup.find('span', {'class': 'score'}).text)
-    bnm = soup.find('p', {'class': 'bnm-txt'})
-    if bnm:
-        if re.match('best new music', bnm.text, re.IGNORECASE):
-            out['bnm'] = True
-        elif re.match('best new reissue', bnm.text, re.IGNORECASE):
-            out['bnr'] = True
-
-    labels = soup.find('ul', {'class': 'label-list'})
-    out['labels'] = [label.text for label in labels.find_all('li')]
-    year = soup.find('span', {'class': 'year'}).text.split(' ')[-1]
-    if year:
-        out['year'] = year
-
-    pub_date = soup.find('span', {'class': 'pub-date'}).text
-    if pub_date[-3:] == 'ago':
-        out['pub_date'] = datetime.today()
-    else:
-        out['pub_date'] = datetime.strptime(pub_date, '%B %d %Y')
-
-    genres = soup.find('ul', {'class': 'genre-list'})
-    out['genres'] = [genre.text for genre in genres.find_all('li')]
-
-    article = soup.find('div', {'class': 'article-content'})
-    out['abstract'] = article.find('div', {'class': 'abstract'}).text
-    out['review'] = article.find('div', {'class': 'contents dropcap'}).text
-
-    return out
 
 
 if __name__ == '__main__':
