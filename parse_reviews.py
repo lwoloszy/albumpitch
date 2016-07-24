@@ -1,9 +1,37 @@
 import re
+from pymongo import MongoClient
 from datetime import datetime
 from bs4 import BeautifulSoup
 
 
-def parse_pitchfork(html, parser='lxml'):
+def parse_pitchfork_reviews():
+    client = MongoClient()
+    db = client['album_reviews']
+    coll = db['pitchfork_full']
+    for i, doc in enumerate(coll.find()):
+        if i % 100 == 0:
+            print('Parsed {:d} reviews'.format(i))
+        doc_id = doc['_id']
+        url = doc['url']
+        for parser in ['lxml', 'html5lib']:
+            try:
+                record = parse_pitchfork_one(doc['html'])
+                coll.update_one(
+                    {'_id': doc_id},
+                    {
+                        '$set': record,
+                        '$currentDate': {'lastModified': True}
+                    }
+                )
+                break
+            except:
+                continue
+        else:
+            print('Unable to parse review {:s}'.format(url))
+    client.close()
+
+
+def parse_pitchfork_one(html, parser='lxml'):
     soup = BeautifulSoup(html, parser)
     out = {}
 
@@ -43,7 +71,7 @@ def parse_pitchfork(html, parser='lxml'):
     out['genres'] = [genre.text for genre in genres.find_all('li')]
 
     article = soup.find('div', {'class': 'article-content'})
-    out['raw_article'] = article
+    #    out['raw_article'] = article
     out['abstract'] = article.find('div', {'class': 'abstract'}).text
     out['review'] = article.find('div', {'class': 'contents dropcap'}).text
 
