@@ -9,8 +9,7 @@ def parse_pitchfork_reviews():
     db = client['album_reviews']
     coll = db['pitchfork_full']
     for i, doc in enumerate(coll.find()):
-        if i % 100 == 0:
-            print('Parsed {:d} reviews'.format(i))
+        print('Parsed {:d} reviews'.format(i))
         doc_id = doc['_id']
         url = doc['url']
         for parser in ['lxml', 'html5lib']:
