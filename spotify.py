@@ -71,9 +71,10 @@ def get_track_features(
 
         albums = result['albums']['items']
 
-        for album in albums:
+        for j, album in enumerate(albums):
             album['pitchfork_id'] = doc['review_id']
             album['pitchfork_url'] = doc['url']
+            album['result_number'] = j
 
             album_id = album['id']
             tracks = sp.album_tracks(album_id)
