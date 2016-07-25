@@ -42,7 +42,8 @@ def get_track_features(
         [('id', ASC), ('album_id', ASC), ('pitchfork_id', ASC)],
         unique=True)
 
-    for i, doc in enumerate(coll.find(), 1):
+    # 4300, 6150
+    for i, doc in enumerate(coll.find()[6150:], 6151):
         if i % 50 == 0:
             print('Got audio features for {:d} albums'.format(i))
 
@@ -82,6 +83,7 @@ def get_track_features(
             try:
                 coll_album_info.insert_one(album)
             except pymongo.errors.DuplicateKeyError:
+                print('Duplicate album')
                 pass
 
             # now get audio features for all tracks in album
@@ -97,10 +99,13 @@ def get_track_features(
                 track_af['artist'] = doc['artists']
                 track_af['album_id'] = album_id
 
-            try:
-                coll_track_afs.insert_many(track_afs)
-            except pymongo.errors.DuplicateKeyError:
-                pass
+            # coll_track_afs.insert_many(track_afs)
+            for track_af in track_afs:
+                try:
+                    coll_track_afs.insert_one(track_af)
+                except pymongo.errors.DuplicateKeyError:
+                    print('Duplicate track')
+                    pass
             time.sleep(1)
 
         coll.update_one(
