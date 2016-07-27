@@ -42,13 +42,18 @@ def get_track_features(
         [('id', ASC), ('album_id', ASC), ('pitchfork_id', ASC)],
         unique=True)
 
-    # 4300, 6150
-    for i, doc in enumerate(coll.find()[6150:], 6151):
+    # for i, doc in enumerate(coll.find(), 1):
+    for i, doc in enumerate(coll.find({'spotify': {'$exists': 0}}), 1):
         if i % 50 == 0:
             print('Got audio features for {:d} albums'.format(i))
 
         artist = ' '.join(doc['artists']).encode('utf-8')
         album = doc['album'].encode('utf-8')
+
+        # spotify doesn't like the EP ending so remove it
+        if album.split()[-1] == 'EP':
+            album = ' '.join(album.split()[0:-1])
+
         query = 'artist:{:s} album:{:s}'.format(artist, album)
 
         for j in xrange(max_retries):
@@ -66,7 +71,7 @@ def get_track_features(
             continue
 
         if not len(result['albums']['items']):
-            with open('logs/query_not_in_spotify_catalog', 'a') as f:
+            with open('logs/query_not_in_spotify_catalog_noep', 'a') as f:
                 f.write(doc['url']+'\n')
             continue
 
