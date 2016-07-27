@@ -193,6 +193,14 @@ def coregister_albums():
             if not album:
                 out3.append((albums, pitch_album['url'], pitch_album['artists']))
 
+        if album:
+            coll_pitchfork.update_one(
+                {'_id': pitch_album['_id']},
+                {
+                    '$set': {'putative_spotify_id': album['id']},
+                    '$currentDate': {'lastModified': True}
+                })
+
     client.close()
     return out1, out2, out3
 
