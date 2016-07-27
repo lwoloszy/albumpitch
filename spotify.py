@@ -1,4 +1,5 @@
 from __future__ import print_function
+import re
 import json
 import spotipy
 import time
@@ -43,7 +44,7 @@ def get_track_features(
         unique=True)
 
     # for i, doc in enumerate(coll.find(), 1):
-    for i, doc in enumerate(coll.find({'spotify': {'$exists': 0}}), 1):
+    for i, doc in enumerate(coll.find({'spotify_found': {'$exists': 0}}), 1):
         if i % 50 == 0:
             print('Got audio features for {:d} albums'.format(i))
 
@@ -116,8 +117,120 @@ def get_track_features(
         coll.update_one(
             {'_id': doc['_id']},
             {
-                '$set': {'spotify': True},
+                '$set': {'spotify_found': True},
                 '$currentDate': {'lastModified': True}
             })
 
     client.close()
+
+
+def coregister_albums():
+    client = MongoClient()
+
+    db_album_reviews = client['album_reviews']
+    coll_pitchfork = db_album_reviews['pitchfork_full']
+
+    db_spotify = client['spotify_info']
+    coll_albums = db_spotify['album_meta']
+
+    out1 = []
+    out2 = []
+    out3 = []
+
+    for pitch_album in coll_pitchfork.find({'spotify_found': {'$exists': 1}}):
+        cur = coll_albums.find({
+            'pitchfork_url': pitch_album['url'],
+            'pitchfork_id': pitch_album['review_id']
+        })
+
+        # ideal scenario
+        if cur.count() == 1:
+            album = cur.next()
+        elif cur.count() == 2:
+            a1, a2 = cur.next(), cur.next()
+
+            if a1['name'] == a2['name']:
+
+                # sometimes two albums with the exact same name exist but
+                # one is a single and the other is a full album; take full
+                album_types = [a1['album_type'], a2['album_type']]
+
+                # sometimes two albums with the exact same name exist but one
+                # is the explicit version and the other is not; take explicit
+                n1_explic = sum([track['explicit']
+                                 for track in a1['tracks']['items']])
+                n2_explic = sum([track['explicit']
+                                 for track in a2['tracks']['items']])
+
+                # sometimes two albums with the exact same name exist but one
+                # has more tracks than the other; take the one with bonus trcks
+                n1_tracks = len(a1['tracks']['items'])
+                n2_tracks = len(a2['tracks']['items'])
+
+                if 'single' in album_types and 'album' in album_types:
+                    d = {a1['album_type']: a1, a2['album_type']: a2}
+                    album = d['album']
+                elif n1_explic > n2_explic:
+                    album = a1
+                elif n2_explic > n1_explic:
+                    album = a2
+                elif n1_tracks > n2_tracks:
+                    album = a1
+                elif n2_tracks > n1_tracks:
+                    album = a2
+                else:
+                    # otherwise, spotify has duplicate albums
+                    # (different labels and whatnot, pick first one)
+                    album = a1
+            else:
+                # do some magic to figure out which search result to use
+                album = determine_best_match(pitch_album, [a1, a2])
+                if not album:
+                    out2.append((a1, a2, pitch_album['url'], pitch_album['artists']))
+        else:
+            albums = list(cur)
+            album = determine_best_match(pitch_album, albums)
+            if not album:
+                out3.append((albums, pitch_album['url'], pitch_album['artists']))
+
+    client.close()
+    return out1, out2, out3
+
+
+def determine_best_match(pitch_album, spotify_albums):
+    # try to see which album matches closest
+    u_single_quotes = ur"['\u2018\u2019\u0060\u00b4]"
+    pitchfork_name = pitch_album['album']
+    pitchfork_name = re.sub(u_single_quotes, "'", pitchfork_name)
+    pitchfork_name = pitchfork_name.lower().strip()
+    if pitchfork_name.split()[-1] == 'ep':
+        pitchfork_name = ' '.join(pitchfork_name.split()[0:-1])
+
+    pitchfork_name = re.sub(r'&', 'and', pitchfork_name)
+    pitchfork_name = ''.join(c for c in pitchfork_name if c.isalnum())
+
+    for album in spotify_albums:
+        a_name = album['name'].lower().strip()
+        if a_name.split()[-1] == 'ep':
+            a_name = ' '.join(a_name.split()[0:-1])
+        a_artist = ' '.join(pitch_album['artists']).lower().strip()
+
+        a_name = re.sub(r'&', 'and', a_name)
+        a_name = ''.join(c for c in a_name if c.isalnum())
+        a_artist = ''.join(c for c in a_artist if c.isalnum())
+
+        special_words = ['(from', 'special', 'version', 'expanded', 'bonus',
+                         'deluxe', 'explicit', 'extended', 'anniversary',
+                         'remaster', 'reissue)']
+        regex = re.compile('|'.join(special_words))
+
+        # doing the best i can here
+        if pitchfork_name == a_name:
+            return album
+        elif regex.search(a_name):
+            return album
+        elif a_artist in a_name and 'djkicks' in a_name:
+            return album
+        else:
+            print(pitchfork_name.encode('utf-8'), a_name.encode('utf-8'))
+    return None
