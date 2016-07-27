@@ -188,7 +188,7 @@ def extended_lsi(df):
                             max_df=0.5, min_df=5)
     tfidf_trans = tfidf.fit_transform(entries)
 
-    svd = TruncatedSVD(n_components=100)
+    svd = TruncatedSVD(n_components=150)
     svd_trans = svd.fit_transform(tfidf_trans)
 
     return tfidf, tfidf_trans, svd, svd_trans
@@ -211,7 +211,6 @@ def print_components(tfidf, svd, n_words=10, n_docs=10):
         # print('Top albums:')
         # print('\t\n'.join(df['url'].iloc[top_docs[-n_docs:, i-1]]))
         print('\n')
-
 
 
 def basic_lda(df):
@@ -322,12 +321,15 @@ class CustomTextPreprocessor(object):
         return text
 
     def _preprocess_custom_specific(self, text):
+        text = re.sub(r'([A-Z][\w_-])*(\s+[A-Z][\w_-]*)', r'\1_\2', text)
+
         # band chk chk chk
         text = re.sub(r"""\B!!!([\s,.'"])""", r'chk chk chk\1', text)
 
         # bands like Matt & Kim
         text = re.sub(r'\b([A-Z][a-z]*)(\s+)&(\s+)+([A-Z][a-z]*)\b',
                       r'\1__AMPERSAND__\4', text)
+
 
         ################################
         #  custom genre manipulation   #
@@ -373,7 +375,6 @@ class CustomTextPreprocessor(object):
     def __call__(self, text):
         text = self._preprocess_unicode(text)
         text = self._preprocess_custom_specific(text)
-        return text
         text = self._preprocess_custom_general(text)
 
         # lowercase last!
