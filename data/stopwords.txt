@@ -19,6 +19,7 @@ afterwards
 again
 against
 ah
+ain't
 all
 almost
 alone
@@ -47,7 +48,7 @@ apparently
 approximately
 are
 aren
-arent
+aren't
 arise
 around
 as
@@ -106,7 +107,7 @@ contain
 containing
 contains
 could
-couldnt
+couldn't
 d
 date
 did
@@ -334,6 +335,7 @@ noone
 nor
 normally
 nos
+n't
 not
 noted
 nothing
@@ -427,6 +429,7 @@ results
 right
 run
 s
+'s
 said
 same
 saw
@@ -598,7 +601,7 @@ w
 want
 wants
 was
-wasnt
+wasn't
 way
 we
 wed
@@ -606,7 +609,7 @@ welcome
 we'll
 went
 were
-werent
+weren't
 we've
 what
 whatever
@@ -644,11 +647,11 @@ wish
 with
 within
 without
-wont
+won't
 words
 world
 would
-wouldnt
+wouldn't
 www
 x
 y
