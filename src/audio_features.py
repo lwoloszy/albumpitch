@@ -9,7 +9,7 @@ def get_mean_audio_features():
 
     try:
         cur.execute("""
-        SELECT p.id, avg(acousticness), avg(danceability),
+        SELECT p.id, p.url, avg(acousticness), avg(danceability),
         avg(energy), avg(instrumentalness), avg(key),
         avg(liveness), avg(loudness), avg(speechiness),
         avg(tempo), avg(time_signature), avg(valence)
@@ -22,7 +22,7 @@ def get_mean_audio_features():
     finally:
         conn.close()
 
-    df = pd.DataFrame(result, columns=['review_id', 'acoustic', 'dance',
+    df = pd.DataFrame(result, columns=['review_id', 'url', 'acoustic', 'dance',
                                        'energy', 'instrument', 'key',
                                        'live', 'loud', 'speech', 'tempo',
                                        'time_signature', 'valence'])
