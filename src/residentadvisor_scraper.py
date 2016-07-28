@@ -13,11 +13,11 @@ HEADERS = {'User-Agent':
 def run(year_start, month_start, format_='album',
         max_tries=10, overwrite=False):
     client = MongoClient()
-    db = client['album_reviews']
-    if 'resident_advisor' in db.collection_names() and overwrite:
-        db['resident_advisor'].drop()
-    coll = db['resident_advisor']
-    coll.create_index('review_id')
+    db = client['albumpitch']
+    if 'residentadvisor' in db.collection_names() and overwrite:
+        db['residentadvisor'].drop()
+    coll = db['residentadvisor']
+    coll.create_index('url')
 
     try:
         empty_ctr = 0
@@ -83,13 +83,13 @@ def get_insert_reviews(review_links, collection, max_tries=10):
         for i in xrange(max_tries):
             response = get_review_page(review_link)
             if response.status_code == 200:
-                record = parse_review(response.content)
-                record['review_link'] = review_link
-                rid = record['review_id']
-                if not collection.find({'review_id': rid}).count():
-                    collection.insert_one(record)
+                document = {}
+                document['url'] = review_link
+                document['html'] = response.content
+                if not collection.find({'url': review_link}).count():
+                    collection.insert_one(document)
                 else:
-                    print('Review {:d} already exists'.format(rid))
+                    print('Review {:s} already exists'.format(review_link))
                 break
             else:
                 print('Request for review {:s} failed, {:d} tries left'
@@ -101,52 +101,6 @@ def get_review_page(review_link):
     session = r.Session()
     response = session.get(BASE_URL + review_link, headers=HEADERS)
     return response
-
-
-def parse_review(html):
-    soup = BeautifulSoup(html, 'lxml')
-    out = {}
-
-    temp = soup.find('a', {'class': 'comment-link'}).get('href').split('?')[0]
-    review_id = int(temp.split('/')[-1])
-    out['review_id'] = review_id
-
-    album_type = soup.find(
-        'a', text=re.compile('(Singles|Albums)', re.IGNORECASE)).text
-    if album_type == 'Singles':
-        out['EP'] = True
-    elif album_type == 'Albums':
-        out['LP'] = True
-
-    album_and_artist = soup.find('h1').text
-    out['album_and_artist'] = album_and_artist
-    out['score'] = soup.find('span', {'class': 'rating'}).text
-
-    label_div = soup.find('div', text=re.compile('Label ', re.IGNORECASE))
-    if label_div:
-        label = label_div.findNextSibling().text
-        out['label'] = label
-
-    released_div = soup.find('div', text=re.compile('Released ', re.IGNORECASE))
-    if released_div:
-        year_search = re.search(r'\d{4}', released_div.findParent().text)
-        if year_search:
-            out['year'] = year_search.group(0)
-
-    style_div = soup.find('div', text=re.compile('Style ', re.IGNORECASE))
-    if style_div:
-        genres = style_div.findParent().text.split('\n')[-2]
-        genres = [genre.strip() for genre in genres.split(',')]
-        out['genres'] = genres
-
-    reviewer = soup.find('a', {'rel': 'author'})
-    if reviewer:
-        out['reviewer'] = reviewer.text
-
-    review = soup.find('div', {'class': 'reviewContent'})
-    out['review'] = review.find('span', {'itemprop': 'description'}).text
-
-    return out
 
 
 if __name__ == '__main__':
