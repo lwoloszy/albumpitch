@@ -16,6 +16,7 @@ from sklearn.grid_search import GridSearchCV
 
 from sklearn.decomposition import TruncatedSVD
 from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.metrics.pairwise import cosine_similarity
 
 from stop_words import get_stop_words
 # import requests
@@ -246,6 +247,14 @@ def print_top_words(vectorizer, clf, class_labels, n=10):
               " ".join(feature_names[j] for j in top_n)))
 
 
+def print_recommendations(df, svd_trans, album_idx):
+    sims = cosine_similarity(svd_trans[album_idx, :].reshape(1, -1), svd_trans)
+    df_temp = df.iloc[np.argsort(sims).flatten()[-25:]]
+    df_temp['sim_scores'] = np.sort(sims.flatten())[-25:]
+#    print df_temp[['url']]
+    print df_temp[['url', 'genres', 'sim_scores']][::-1]
+
+
 #def print_top_words(nmf, vectorizer, n=10):
 #    words = vectorizer.get_feature_names()
 #    for i, component in enumerate(nmf.components_):
@@ -311,9 +320,8 @@ class CustomTextPreprocessor(object):
         text = re.sub(r'&', '__AMPERSAND__', text)
         text = re.sub(r'\*', '__ASTERISK__', text)
 
-        # deal with music "decades": change e.g. 1980 to '80s and '80s to 80s
-        text = re.sub(r"(19|20)(\d0)s", r"'\2s", text)
-        text = re.sub(r"'(\d0s)", r"\1", text)
+        # deal with music "decades": change e.g. 1980s to '80s and 80s to '80s
+        text = re.sub(r"(19|20|'?)(\d0)s", r"'\2__s", text)
 
         # get rid of pesky newlines, carriages, tabs which screw up tokenizer
         text = re.sub(r'(\n|\r|\t)', ' ', text)
@@ -321,53 +329,32 @@ class CustomTextPreprocessor(object):
         return text
 
     def _preprocess_custom_specific(self, text):
-        text = re.sub(r'([A-Z][\w_-])*(\s+[A-Z][\w_-]*)', r'\1_\2', text)
+        # merge consecutive capitalized words, but not if they start a sentence
+        # meant to extract proper names and some portion of band names
+        text = re.sub(r'[^.!?]([A-Z][a-zA-Z0-9-]*)\s+([A-Z][a-zA-Z0-9-]*)',
+                      r'\1_\2', text)
 
         # band chk chk chk
-        text = re.sub(r"""\B!!!([\s,.'"])""", r'chk chk chk\1', text)
+        text = re.sub(r"""\s!!!([\s,.'"])""", r'chk_chk_chk\1', text)
 
-        # bands like Matt & Kim
-        text = re.sub(r'\b([A-Z][a-z]*)(\s+)&(\s+)+([A-Z][a-z]*)\b',
-                      r'\1__AMPERSAND__\4', text)
-
+        # glue together things joined with an ampersand
+        # text = re.sub(r'\b([A-Z][a-z]*)(\s+)&(\s+)+([A-Z][a-z]*)\b',
+        #              r'\1__AMPERSAND__\4', text)
+        text = re.sub(r'\s+&\s+', '&', text)
 
         ################################
         #  custom genre manipulation   #
         ################################
 
-        # genres that have a -rock, -pop, etc.
-        text = re.sub(r'(\w+)-rock\b', r'\1_rock', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-pop\b', r'\1_pop', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-punk\b', r'\1_punk', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-metal\b', r'\1_metal', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-country\b', r'\1_country', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-blues\b', r'\1_blues', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-hop', r'\1_hop', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-rap\b', r'\1_rap', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-R&B\b', r'\1_R&B', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-jazz\b', r'\1_jazz', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-soul\b', r'\1_soul', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-classical\b', r'\1_classical', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-contemporary\b', r'\1_contemporary', text,
-                      flags=re.IGNORECASE)
-        text = re.sub(r'(\w+)-techno\b', r'\1_techno', text,
-                      re.IGNORECASE)
-        text = re.sub(r'(\w+)-electronica\b', r'\1_electronica', text,
-                      flags=re.IGNORECASE)
+        # genres that have a -rock, -pop, R&B, etc.
+        genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues', 'hop',
+                  'rap', 'R&B', 'jazz', 'soul', 'classical', 'songwriter',
+                  'contemporary', 'techno', 'electronica)']
+        regex_part = '|'.join(genres)
+        regex_full = re.compile(r'(\w+)[-/]' + regex_part, flags=re.IGNORECASE)
+        text = regex_full.sub(r'\1_\2', text)
 
-        # split quoted verses (usually rap lyrics)
+        # split quoted verses (usually rap lyrics, but now always)
         text = re.sub(r'/', ' / ', text)
 
         return text
