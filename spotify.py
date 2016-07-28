@@ -1,11 +1,14 @@
 from __future__ import print_function
+
 import re
 import json
-import spotipy
 import time
-from spotipy.oauth2 import SpotifyClientCredentials
+
 import pymongo
 from pymongo import MongoClient
+
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 
 ASC = pymongo.ASCENDING
 
@@ -15,8 +18,8 @@ def get_track_features(
         max_retries=10):
 
     client = MongoClient()
-    db = client['album_reviews']
-    coll = db['pitchfork_full']
+    db = client['albumpitch']
+    coll = db['pitchfork']
 
     with open(creds_filepath) as f:
         creds = json.loads(f.read())
@@ -31,15 +34,13 @@ def get_track_features(
     sp = spotipy.Spotify(client_credentials_manager=ccm)
     sp.trace = False
 
-    db_spotify = client['spotify_info']
-
-    coll_album_info = db_spotify['album_meta']
-    coll_album_info.create_index(
+    coll_spotify_albums = db['spotify_albums']
+    coll_spotify_albums.create_index(
         [('id', ASC), ('pitchfork_id', ASC)],
         unique=True)
 
-    coll_track_afs = db_spotify['audio_features']
-    coll_track_afs.create_index(
+    coll_audio_features = db['spotify_audio_features']
+    coll_audio_features.create_index(
         [('id', ASC), ('album_id', ASC), ('pitchfork_id', ASC)],
         unique=True)
 
@@ -87,7 +88,7 @@ def get_track_features(
             tracks = sp.album_tracks(album_id)
             album['tracks'] = tracks
             try:
-                coll_album_info.insert_one(album)
+                coll_spotify_albums.insert_one(album)
             except pymongo.errors.DuplicateKeyError:
                 print('Duplicate album')
                 pass
@@ -105,10 +106,10 @@ def get_track_features(
                 track_af['artist'] = doc['artists']
                 track_af['album_id'] = album_id
 
-            # coll_track_afs.insert_many(track_afs)
+            # coll_audio_features.insert_many(audio_features)
             for track_af in track_afs:
                 try:
-                    coll_track_afs.insert_one(track_af)
+                    coll_audio_features.insert_one(track_af)
                 except pymongo.errors.DuplicateKeyError:
                     print('Duplicate track')
                     pass
@@ -127,18 +128,16 @@ def get_track_features(
 def coregister_albums():
     client = MongoClient()
 
-    db_album_reviews = client['album_reviews']
-    coll_pitchfork = db_album_reviews['pitchfork_full']
-
-    db_spotify = client['spotify_info']
-    coll_albums = db_spotify['album_meta']
+    db = client['albumpitch']
+    coll_pitchfork = db['pitchfork']
+    coll_spotify_albums = ['spotify_albums']
 
     out1 = []
     out2 = []
     out3 = []
 
     for pitch_album in coll_pitchfork.find({'spotify_found': {'$exists': 1}}):
-        cur = coll_albums.find({
+        cur = coll_spotify_albums.find({
             'pitchfork_url': pitch_album['url'],
             'pitchfork_id': pitch_album['review_id']
         })
@@ -241,4 +240,5 @@ def determine_best_match(pitch_album, spotify_albums):
             return album
         else:
             print(pitchfork_name.encode('utf-8'), a_name.encode('utf-8'))
+
     return None

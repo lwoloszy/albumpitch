@@ -12,10 +12,10 @@ HEADERS = {'User-Agent':
 
 def run(page_start=1, max_tries=10, overwrite=False):
     client = MongoClient()
-    db = client['album_reviews']
-    if 'pitchfork_full' in db.collection_names() and overwrite:
-        db['pitchfork_full'].drop()
-    coll = db['pitchfork_full']
+    db = client['albumpitch']
+    if 'pitchfork' in db.collection_names() and overwrite:
+        db['pitchfork'].drop()
+    coll = db['pitchfork']
     coll.create_index('url')
     try:
         empty_ctr = 0

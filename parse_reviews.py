@@ -6,8 +6,8 @@ from bs4 import BeautifulSoup
 
 def parse_pitchfork_reviews():
     client = MongoClient()
-    db = client['album_reviews']
-    coll = db['pitchfork_full']
+    db = client['albumpitch']
+    coll = db['pitchfork']
     for i, doc in enumerate(coll.find()):
         print('Parsed {:d} reviews'.format(i))
         doc_id = doc['_id']
