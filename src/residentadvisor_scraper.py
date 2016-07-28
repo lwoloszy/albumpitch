@@ -2,8 +2,12 @@ import re
 import argparse
 import time
 import requests as r
+import functools
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
+
+import scrape_common_funcs as scf
+
 
 BASE_URL = 'http://www.residentadvisor.net'
 HEADERS = {'User-Agent':
@@ -23,8 +27,9 @@ def run(year_start, month_start, format_='album',
         empty_ctr = 0
         for year in xrange(year_start, 2017):
             for month in xrange(month_start, 13):
-                review_links = get_review_links(year, month,
-                                                format_, max_tries)
+                review_links = scf.get_review_links(
+                    functools.partial(get_links_page, format_=format_),
+                    parse_links, (year, month), max_tries)
 
                 if empty_ctr > 10:
                     print('10 consecutive requests with invalid response, exiting')
@@ -38,7 +43,8 @@ def run(year_start, month_start, format_='album',
                 else:
                     empty_ctr = 0
 
-                get_insert_reviews(review_links, coll, max_tries)
+                scf.get_insert_reviews(
+                    get_review_page, review_links, coll, max_tries)
     finally:
         client.close()
 
@@ -76,25 +82,6 @@ def parse_links(html):
     review_links = [article.find('a').get('href')
                     for article in articles]
     return review_links
-
-
-def get_insert_reviews(review_links, collection, max_tries=10):
-    for review_link in review_links:
-        for i in xrange(max_tries):
-            response = get_review_page(review_link)
-            if response.status_code == 200:
-                document = {}
-                document['url'] = review_link
-                document['html'] = response.content
-                if not collection.find({'url': review_link}).count():
-                    collection.insert_one(document)
-                else:
-                    print('Review {:s} already exists'.format(review_link))
-                break
-            else:
-                print('Request for review {:s} failed, {:d} tries left'
-                      .format(review_link, max_tries - i - 1))
-                time.sleep(5)
 
 
 def get_review_page(review_link):

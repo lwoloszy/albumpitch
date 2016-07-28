@@ -1,11 +1,10 @@
-import re
-import time
 import argparse
 import requests as r
 import itertools as it
-from datetime import datetime
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
+
+import scrape_common_funcs as scf
 
 BASE_URL = 'http://www.thelineofbestfit.com'
 HEADERS = {'User-Agent':
@@ -14,15 +13,16 @@ HEADERS = {'User-Agent':
 
 def run(page_start=1, max_tries=10, overwrite=False):
     client = MongoClient()
-    db = client['album_reviews']
+    db = client['albumpitch']
     if 'lineofbestfit' in db.collection_names() and overwrite:
         db['lineofbestfit'].drop()
     coll = db['lineofbestfit']
-    coll.create_index('review_id')
+    coll.create_index('url')
     try:
         empty_ctr = 0
         for page_num in it.count(page_start, 8):
-            review_links = get_review_links(page_num, max_tries)
+            review_links = scf.get_review_links(
+                get_links_page, parse_links, page_num, max_tries)
 
             if empty_ctr > 10:
                 print('10 consecutive requests with invalid response, exiting')
@@ -36,25 +36,10 @@ def run(page_start=1, max_tries=10, overwrite=False):
             else:
                 empty_ctr = 0
 
-            get_insert_reviews(review_links, coll, max_tries)
+            scf.get_insert_reviews(
+                get_review_page, review_links, coll, max_tries)
     finally:
         client.close()
-
-
-def get_review_links(page_num, max_tries=10):
-    print('Getting links from page {:d}'.format(page_num))
-
-    review_links = None
-    for i in xrange(max_tries):
-        response = get_links_page(page_num)
-        if response.status_code == 200:
-            review_links = parse_links(response.content)
-            break
-        else:
-            print('Request for links on page {:d} failed, {:d} tries left'
-                  .format(page_num, max_tries - i - 1))
-            time.sleep(5)
-    return review_links
 
 
 def get_links_page(page_num):
@@ -74,67 +59,11 @@ def parse_links(html):
     return review_links
 
 
-def get_insert_reviews(review_links, collection, max_tries=10):
-    for review_link in review_links:
-        for i in xrange(max_tries):
-            response = get_review_page(review_link)
-            if response.status_code == 200:
-                # just use review_link as rid
-                rid = review_link
-                if collection.find({'review_id': rid}).count() > 0:
-                    print('Review {:s} already exists'.format(rid))
-                    break
-                record = parse_review(response.content)
-                record['review_id'] = review_link
-                record['review_link'] = review_link
-                collection.insert_one(record)
-                break
-            else:
-                print('Request for review {:s} failed, {:d} tries left'
-                      .format(review_link, max_tries - i - 1))
-                time.sleep(5)
-
-
 def get_review_page(review_link):
     session = r.Session()
     response = session.get(BASE_URL + '/reviews/albums/' + review_link,
                            headers=HEADERS)
     return response
-
-
-def parse_review(html):
-    soup = BeautifulSoup(html, 'lxml')
-    out = {}
-
-    reviewer_fn = soup.find(itemprop='givenName')
-    if reviewer_fn:
-        reviewer_fn = reviewer_fn.text
-    else:
-        reviewer_fn = ''
-
-    reviewer_ln = soup.find(itemprop='familyName')
-    if reviewer_ln:
-        reviewer_ln = reviewer_ln.text
-    else:
-        reviewer_ln = ''
-        
-    out['reviewer'] = reviewer_fn + ' ' + reviewer_ln
-
-    artist = soup.find(itemprop='byArtist').text.strip()
-    album = soup.find(class_='album-meta-title').text
-    out['artist'] = artist
-    out['album'] = album
-
-    rating = soup.find(itemprop='ratingValue').text
-    rating_max = soup.find(itemprop='bestRating').get('content')
-    # rating_min = soup.find(itemprop='worstRating').text
-    rating = rating + '/' + rating_max
-    out['score'] = rating
-
-    review = soup.find(class_='articlebody')
-    out['review'] = review.text
-
-    return out
 
 
 if __name__ == '__main__':

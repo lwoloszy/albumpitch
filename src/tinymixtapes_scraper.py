@@ -3,9 +3,10 @@ import time
 import argparse
 import requests as r
 import itertools as it
-from datetime import datetime
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
+
+import scrape_common_funcs as scf
 
 BASE_URL = 'http://www.tinymixtapes.com'
 HEADERS = {'User-Agent':
@@ -22,7 +23,8 @@ def run(page_start=1, max_tries=10, overwrite=False):
     try:
         empty_ctr = 0
         for page_num in it.count(page_start):
-            review_links = get_review_links(page_num, max_tries)
+            review_links = scf.get_review_links(
+                get_links_page, parse_links, page_num, max_tries)
 
             if empty_ctr > 10:
                 print('10 consecutive requests with invalid response, exiting')
@@ -36,25 +38,10 @@ def run(page_start=1, max_tries=10, overwrite=False):
             else:
                 empty_ctr = 0
 
-            get_insert_reviews(review_links, coll, max_tries)
+            scf.get_insert_reviews(
+                get_review_page, review_links, coll, max_tries)
     finally:
         client.close()
-
-
-def get_review_links(page_num, max_tries=10):
-    print('Getting links from page {:d}'.format(page_num))
-
-    review_links = None
-    for i in xrange(max_tries):
-        response = get_links_page(page_num)
-        if response.status_code == 200:
-            review_links = parse_links(response.content)
-            break
-        else:
-            print('Request for links on page {:d} failed, {:d} tries left'
-                  .format(page_num, max_tries - i - 1))
-            time.sleep(5)
-    return review_links
 
 
 def get_links_page(page_num):
@@ -76,76 +63,11 @@ def parse_links(html):
     return review_links
 
 
-def get_insert_reviews(review_links, collection, max_tries=10):
-    for review_link in review_links:
-        for i in xrange(max_tries):
-            response = get_review_page(review_link)
-            if response.status_code == 200:
-                # just use review_link as rid
-                rid = review_link
-                if collection.find({'review_id': rid}).count():
-                    print('Review {:s} already exists'.format(rid))
-                    break
-                record = parse_review(response.content)
-                record['review_id'] = review_link
-                record['review_link'] = review_link
-                collection.insert_one(record)
-                break
-            else:
-                print('Request for review {:s} failed, {:d} tries left'
-                      .format(review_link, max_tries - i - 1))
-                time.sleep(5)
-
-
 def get_review_page(review_link):
     session = r.Session()
     response = session.get(BASE_URL + '/music-review/' + review_link,
                            headers=HEADERS)
     return response
-
-
-def parse_review(html):
-    soup = BeautifulSoup(html, 'lxml')
-    out = {}
-
-    reviewer = soup.find(itemprop='author').find(itemprop='name').text
-    out['reviewer'] = reviewer
-
-    artist = soup.find(itemprop='byArtist').find(itemprop='name').text.strip()
-    album = soup.find(class_='entry__subtitle').text.strip()
-    out['artist'] = artist
-    out['album'] = album
-
-    rating = soup.find(itemprop='ratingValue').text
-    rating_max = soup.find(itemprop='bestRating').text
-    # rating_min = soup.find(itemprop='worstRating').text
-    rating = rating + '/' + rating_max
-    out['score'] = rating
-
-    meta = soup.find(class_="review-heading__details-top")
-    label_and_year = meta.find('p', class_='meta').text.strip('[]')
-    try:
-        label, year = label_and_year.split('; ')
-        out['label'] = label
-        out['year'] = year
-    except:
-        out['label_and_year'] = label_and_year
-
-    styles = soup.find(class_='review-heading__details-bottom')
-    styles = styles.text.split('\n')[1].split(': ')[-1].split(',')
-    styles = [style.strip() for style in styles]
-    out['genres'] = styles
-
-    review = soup.find(class_='entry__body-text')
-    # the following removes track listing and such
-    review.find(class_='u-hide').extract()
-    out['review'] = review.text
-
-    headings = soup.find_all(class_='heading__text')
-    if any([heading.text == 'Eureka!' for heading in headings]):
-        out['eureka'] = True
-
-    return out
 
 
 if __name__ == '__main__':

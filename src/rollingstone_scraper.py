@@ -1,11 +1,10 @@
-import re
 import argparse
-import time
 import requests as r
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 import itertools as it
-from datetime import datetime
+
+import scrape_common_funcs as scf
 
 BASE_URL = 'http://www.rollingstone.com'
 HEADERS = {'User-Agent':
@@ -23,7 +22,8 @@ def run(page_start, max_tries=10, overwrite=False):
     try:
         empty_ctr = 0
         for page_num in it.count(page_start):
-            review_links = get_review_links(page_num, max_tries)
+            review_links = scf.get_review_links(
+                get_links_page, parse_links, page_num, max_tries)
 
             if empty_ctr > 10:
                 print('10 consecutive requests with invalid response, exiting')
@@ -37,27 +37,10 @@ def run(page_start, max_tries=10, overwrite=False):
             else:
                 empty_ctr = 0
 
-            get_insert_reviews(review_links, coll, max_tries)
+            scf.get_insert_reviews(
+                get_review_page, review_links, coll, max_tries)
     finally:
         client.close()
-
-
-def get_review_links(page_num, max_tries=10):
-    print('Getting links from page {:d}'
-          .format(page_num))
-
-    review_links = None
-    for i in xrange(max_tries):
-        response = get_links_page(page_num)
-        if response.status_code == 200:
-            review_links = parse_links(response.content)
-            break
-        else:
-            print('Request for links on page {:d} failed, {:d} tries left'
-                  .format(page_num, max_tries - i - 1))
-            time.sleep(5)
-
-    return review_links
 
 
 def get_links_page(page_num):
@@ -75,25 +58,6 @@ def parse_links(html):
     review_links = [cc.get('href') for cc in content_cards]
     review_links = [review_link.split('/')[-1] for review_link in review_links]
     return review_links
-
-
-def get_insert_reviews(review_links, collection, max_tries=10):
-    for review_link in review_links:
-        for i in xrange(max_tries):
-            response = get_review_page(review_link)
-            if response.status_code == 200:
-                document = {}
-                document['url'] = review_link
-                document['html'] = response.content
-                if not collection.find({'url': review_link}).count():
-                    collection.insert_one(document)
-                else:
-                    print('Review {:s} already exists'.format(review_link))
-                break
-            else:
-                print('Request for review {:s} failed, {:d} tries left'
-                      .format(review_link, max_tries - i - 1))
-                time.sleep(5)
 
 
 def get_review_page(review_link):
