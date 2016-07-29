@@ -20,8 +20,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 from stop_words import get_stop_words
 # import requests
 import nltk.corpus
+from nltk.stem.porter import PorterStemmer
 
 import text_preprocess as textpre
+import utility_funcs as uf
 reload(textpre)
 
 
@@ -41,11 +43,8 @@ def get_documents(collection='pitchfork_full'):
     return df
 
 
-def compute_genres(df):
-    sel = df['genres'].apply(lambda x: len(x) > 0)
-    df = df[sel]
-    df['genre'] = df['genres'].map(lambda x: x[0])
-    return df
+def append_genres(df):
+    df['genre'] = uf.get_genres(df)
 
 
 def naive_bayes_genre_cv(df):
@@ -179,10 +178,12 @@ def extended_tfidf(df):
     # r = requests.get('http://fs1.position2.com/bm/txt/stopwords.txt')
     # stopwords = r.content.split('\n')
     # stopwords = nltk.corpus.stopwords.words('english')
-    stopwords = get_stop_words('en')
+
     # with open('data/stopwords.txt') as f:
     #    stopwords = f.readlines()
     #    stopwords = [stopword.strip() for stopword in stopwords]
+
+    stopwords = get_stop_words('en')
 
     # get those contractions
     stopwords.extend(nltk.word_tokenize(' '.join(stopwords)))
@@ -198,15 +199,14 @@ def extended_tfidf(df):
                       'song', 'songs',
                       'track', 'tracks',
                       'sound', 'sounds',
-                      # 'feel', 'feels',
-                      # 'think', 'thinks',
-                      'thing', 'things', 'something'
+                      'thing', 'things', 'something',
                       'music'])
     stopset = set(stopwords)
 
+    porter = PorterStemmer()
     tfidf = TfidfVectorizer(stop_words=stopset,
                             preprocessor=textpre.CustomTextPreprocessor(),
-                            tokenizer=textpre.CustomTokenizer(stopset),
+                            tokenizer=textpre.CustomTokenizer(stopset, porter),
                             max_df=0.5, min_df=5)
     tfidf_trans = tfidf.fit_transform(entries)
     return tfidf, tfidf_trans
@@ -214,7 +214,7 @@ def extended_tfidf(df):
 
 def extended_lsi(df):
     tfidf, tfidf_trans = extended_tfidf(df)
-    svd = TruncatedSVD(n_components=250)
+    svd = TruncatedSVD(n_components=200)
     svd_trans = svd.fit_transform(tfidf_trans)
 
     return tfidf, tfidf_trans, svd, svd_trans
@@ -285,3 +285,9 @@ def print_components(tfidf, svd, svd_trans, df,
         print('\nTop albums:')
         print('\n\t'+'\n\t'.join(artist_album))
         print('\n')
+
+
+def print_top(tfidf, tfidf_trans, n_words=10):
+    top_idx = np.argsort(np.mean(tfidf_trans.toarray(), axis=0))[-n_words:]
+    words = np.array(tfidf.get_feature_names())[top_idx]
+    print(words)
