@@ -2,29 +2,32 @@ import re
 import string
 
 import nltk
-from nltk.stem.porter import PorterStemmer
 
 
 class CustomTokenizer(object):
-    def __init__(self, stopset=None, stemmer=PorterStemmer()):
-        self.tokenizer = nltk.tokenize.word_tokenize
+    def __init__(self, stopset=None, stemmer=None):
         self.punctset = set(string.punctuation)
+
         if stopset:
             self.stopset = set(stopset)
+        else:
+            self.stopset = set()
+
         if stemmer:
-            self.stemmer = PorterStemmer()
+            self.stemmer = stemmer
+        else:
+            self.stemmer = lambda x: x
 
     def __call__(self, doc):
         # use nltk's intelligent tokenizer, but we'll do some postprocessing
-        words = self.tokenizer(doc)
+        words = nltk.tokenize.word_tokenize(doc)
 
-        # now split on hyphens manually
+        # split on hyphens manually
         words = [subword for word in words for subword in word.split('-')]
 
         # remove stopwords/punctuation
-        words = filter(lambda x: (x not in self.punctset and
-                                  x not in self.stopset and
-                                  x.strip(string.punctuation)),
+        words = filter(lambda x: (x.strip(string.punctuation) and
+                                  x not in self.stopset),
                        words)
 
         # strip punctuation and stem
@@ -57,23 +60,30 @@ class CustomTextPreprocessor(object):
 
     def _preprocess_custom_general(self, text):
         # doing this so nltk tokenizer works better
-        text = re.sub(r'\$', '__DOLLAR_SIGN__', text)
-        text = re.sub(r'%', '__PERCENT_SIGN__', text)
-        text = re.sub(r'\^', '__CARET__', text)
+
+        # keep all ampersands
         text = re.sub(r'&', '__AMPERSAND__', text)
-        text = re.sub(r'\*', '__ASTERISK__', text)
+
+        # keep dollar signs if they don't precede digit
+        text = re.sub(r'\$(?!\d)', '__DOLLAR_SIGN__', text)
+
+        # convert symbol % to word if it follows digit
+        text = re.sub(r'(?<=\d)%', ' percent', text)
 
         # deal with music "decades": change e.g. 1980s to '80s and 80s to '80s
-        text = re.sub(r"(19|20|'?)(\d0)s", r"'\2__s", text)
+        text = re.sub(r"\b(19|20|'?)(\d0)s", r"'\2__s", text)
 
-        # get rid of pesky newlines, carriages, tabs which screw up tokenizer
+        # add decades information to articles that only have specific year
+        text = re.sub(r"\b(19|20)(\d)(\d)\b", r"\1\2\3 '\g<2>0__s", text)
+
+        # Get rid of pesky newlines, carriages, tabs which screw up tokenizer
         text = re.sub(r'(\n|\r|\t)', ' ', text)
 
         return text
 
     def _preprocess_custom_specific(self, text):
         # merge consecutive capitalized words, but not if they start a sentence
-        # meant to extract proper names and some portion of band names
+        # meant to extract proper names and some percentage of band names
         text = re.sub(r'(?<![.!?]\s)([A-Z][\w$&%]*)\s+([A-Z][\w$&%]*)',
                       r'\1_\2', text)
 
@@ -81,21 +91,16 @@ class CustomTextPreprocessor(object):
         text = re.sub(r"""\s!!!([\s,.'"])""", r'chk_chk_chk\1', text)
 
         # glue together things joined with an ampersand
-        # text = re.sub(r'\b([A-Z][a-z]*)(\s+)&(\s+)+([A-Z][a-z]*)\b',
-        #              r'\1__AMPERSAND__\4', text)
         text = re.sub(r'\s+&\s+', '&', text)
 
-        ################################
-        #  custom genre manipulation   #
-        ################################
-
-        # genres that have a -rock, -pop, R&B, etc.
+        # genres that have a -rock, -pop, R&B, etc. we will create joined
+        # words but also include the separate terms
         genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues', 'hop',
                   'rap', 'R&B', 'jazz', 'soul', 'classical', 'songwriter',
-                  'contemporary', 'funk', 'techno', 'electronica)']
+                  'contemporary', 'funk', 'techno', 'wave', 'electronica)']
         regex_part = '|'.join(genres)
         regex_full = re.compile(r'(\w+)[-/]' + regex_part, flags=re.IGNORECASE)
-        text = regex_full.sub(r'\1_\2', text)
+        text = regex_full.sub(r'\1 \2 \1_\2', text)
 
         # split quoted verses (usually rap lyrics, but now always)
         text = re.sub(r'/', ' / ', text)
