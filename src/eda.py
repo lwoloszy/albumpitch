@@ -1,11 +1,10 @@
 from __future__ import division
+import re
 
 import pandas as pd
 import numpy as np
 from pymongo import MongoClient
 
-from nltk import word_tokenize
-from nltk.stem.porter import PorterStemmer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
@@ -21,8 +20,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 from stop_words import get_stop_words
 # import requests
 import nltk.corpus
-import re
-import string
+
+import text_preprocess as textpre
+reload(textpre)
 
 
 def get_documents(collection='pitchfork_full'):
@@ -148,19 +148,33 @@ def basic_lsi(df):
     svd = TruncatedSVD(n_components=100)
     svd_trans = svd.fit_transform(tfidf_trans)
 
-    return tfidf, svd
+    return tfidf, tfidf_trans, svd, svd_trans
 
 
-def extended_lsi(df):
-    abstracts = df['abstract']
-    reviews = df['review']
-    genres = df['genres'].map(lambda x: ' '.join(x))
-    artists = df['artists'].map(lambda x: ' '.join(x))
-    album = df['album']
+def extended_tfidf(df):
+    abstracts = df['abstract'].tolist()
+    reviews = df['review'].tolist()
+    genres = df['genres'].map(lambda x: ', '.join(x)).tolist()
+    artists = df['artists'].map(lambda x: ', '.join(x)).tolist()
+    album = df['album'].tolist()
 
+    new_reviews = []
+    for i, (artist, review) in enumerate(zip(artists, reviews)):
+        artist_parts = artist.split()
+        if len(artist_parts) == 2:
+            if re.match(r'\b(the|a|an)\b', artist_parts[0], re.IGNORECASE):
+                new_reviews.append(review)
+                continue
+            artist = artist.encode('utf-8')
+            review = review.encode('utf-8')
+            new_reviews.append(
+                textpre.prepend_first_name(artist, review).decode('utf-8'))
+        else:
+            new_reviews.append(review)
+
+    reviews = new_reviews
     together = [abstracts, reviews, genres, artists, album]
-
-    entries = [' '.join(entry) for entry in zip(*together)]
+    entries = [', '.join(entry) for entry in zip(*together)]
 
     # r = requests.get('http://fs1.position2.com/bm/txt/stopwords.txt')
     # stopwords = r.content.split('\n')
@@ -176,64 +190,55 @@ def extended_lsi(df):
     # custom stop words
     stopwords.extend(['lp', 'ep',
                       'record', 'records',
-                      'feel', 'feels',
-                      'sound', 'sounds',
+                      'label', 'labels',
+                      'release', 'releases', 'released',
+                      'listen', 'listens', 'listened', 'listener',
+                      'version', 'versions',
                       'album', 'albums',
                       'song', 'songs',
+                      'track', 'tracks',
+                      'sound', 'sounds',
+                      # 'feel', 'feels',
+                      # 'think', 'thinks',
+                      'thing', 'things', 'something'
                       'music'])
     stopset = set(stopwords)
 
     tfidf = TfidfVectorizer(stop_words=stopset,
-                            preprocessor=CustomTextPreprocessor(),
-                            tokenizer=CustomTokenizer(stopset),
+                            preprocessor=textpre.CustomTextPreprocessor(),
+                            tokenizer=textpre.CustomTokenizer(stopset),
                             max_df=0.5, min_df=5)
     tfidf_trans = tfidf.fit_transform(entries)
+    return tfidf, tfidf_trans
 
-    svd = TruncatedSVD(n_components=150)
+
+def extended_lsi(df):
+    tfidf, tfidf_trans = extended_tfidf(df)
+    svd = TruncatedSVD(n_components=250)
     svd_trans = svd.fit_transform(tfidf_trans)
 
     return tfidf, tfidf_trans, svd, svd_trans
 
 
-def print_components(tfidf, svd, n_words=10, n_docs=10):
-    # transformed = svd.transform(tfidf.transform(df['review']))
-    # top_docs = np.argsort(transformed, axis=0)
-
-    components = svd.components_
-    words = np.array(tfidf.get_feature_names())
-    for i, component in enumerate(components[0:10], 1):
-        sorted_idx = np.argsort(component)
-        print('Component #{:d}'.format(i))
-        print('-'*20)
-        print('\nMost negative words:')
-        print('\n\t'+'\n\t'.join(words[sorted_idx[:n_words]]))
-        print('\nMost positive words:')
-        print('\n\t'+'\n\t'.join(words[sorted_idx[-n_words:]]))
-        # print('Top albums:')
-        # print('\t\n'.join(df['url'].iloc[top_docs[-n_docs:, i-1]]))
-        print('\n')
-
-
 def basic_lda(df):
     X = df['review']
-    tfidf = CountVectorizer(stop_words='english',
-                            min_df=2,
-                            max_df=0.95)
+    tfidf = TfidfVectorizer(stop_words='english',
+                            min_df=5,
+                            max_df=0.5)
     tfidf_trans = tfidf.fit_transform(X)
 
     lda = LatentDirichletAllocation(n_topics=100, max_iter=5)
     lda_trans = lda.fit_transform(tfidf_trans)
 
-    return lda_trans
+    return tfidf, tfidf_trans, lda, lda_trans
 
 
-class PorterTokenizer(object):
+def extended_lda(df):
+    tfidf, tfidf_trans = extended_tfidf(df)
+    lda = LatentDirichletAllocation(n_topics=100, max_iter=5)
+    lda_trans = lda.fit_transform(tfidf_trans)
 
-    def __init__(self):
-        self.stemmer = PorterStemmer()
-
-    def __call__(self, doc):
-        return [self.stemmer.stem(t) for t in word_tokenize(doc)]
+    return tfidf, tfidf_trans, lda, lda_trans
 
 
 def print_top_words(vectorizer, clf, class_labels, n=10):
@@ -251,119 +256,32 @@ def print_recommendations(df, svd_trans, album_idx):
     sims = cosine_similarity(svd_trans[album_idx, :].reshape(1, -1), svd_trans)
     df_temp = df.iloc[np.argsort(sims).flatten()[-25:]]
     df_temp['sim_scores'] = np.sort(sims.flatten())[-25:]
-#    print df_temp[['url']]
     print df_temp[['url', 'genres', 'sim_scores']][::-1]
 
 
-#def print_top_words(nmf, vectorizer, n=10):
-#    words = vectorizer.get_feature_names()
-#    for i, component in enumerate(nmf.components_):
-#        top10 = np.argsort(nmf.components_[i])[-n:]
-#        print('Component {:d}: {:s}'.format(i,
-#            ' '.join([words[j] for j in top10])))
+def print_components(tfidf, svd, svd_trans, df,
+                     n_comp=10, n_words=10, n_docs=10):
+    # transformed = svd.transform(tfidf.transform(df['review']))
+    # top_docs = np.argsort(transformed, axis=0)
 
-class CustomTokenizer(object):
-    def __init__(self, stopset=None, stemmer=PorterStemmer()):
-        self.tokenizer = nltk.tokenize.word_tokenize
-        self.punctset = set(string.punctuation)
-        if stopset:
-            self.stopset = set(stopset)
-        if stemmer:
-            self.stemmer = PorterStemmer()
+    components = svd.components_
+    words = np.array(tfidf.get_feature_names())
+    for i, component in enumerate(components[0:n_comp], 1):
+        sorted_idx = np.argsort(component)
+        print('Component #{:d}'.format(i))
+        print('-'*20)
+        print('\nMost negative words:')
+        print('\n\t'+'\n\t'.join(words[sorted_idx[:n_words]]))
+        print('\nMost positive words:')
+        print('\n\t'+'\n\t'.join(words[sorted_idx[-n_words:]]))
 
-    def __call__(self, doc):
-        # use nltk's intelligent tokenizer, but we'll do some postprocessing
-        words = self.tokenizer(doc)
+        top_docs = np.argsort(svd_trans[:, i-1])[-n_docs:]
+        artists = df.iloc[top_docs]['artists']
+        artists = [' / '.join(artist) for artist in artists]
+        album = df.iloc[top_docs]['album'].tolist()
 
-        # now split on hyphens manually
-        words = [subword for word in words for subword in word.split('-')]
+        artist_album = [' : '.join([ar, al]) for ar, al in zip(artists, album)]
 
-        # remove stopwords/punctuation
-        words = filter(lambda x: (x not in self.punctset and
-                                  x not in self.stopset and
-                                  x.strip(string.punctuation)),
-                       words)
-
-        # strip punctuation and stem
-        words = [self.stemmer.stem(word.strip(string.punctuation))
-                 for word in words]
-
-        return words
-
-
-class CustomTextPreprocessor(object):
-    def __init__(self):
-        self.u_single_quotes = ur"['\u2018\u2019\u0060\u00b4]"
-        self.u_double_quotes = ur'["\u201c\u201d]'
-        self.u_spaces = ur'\xa0'
-        self.u_en_dashes = ur'\u2013'
-        self.u_em_dashes = ur'\u2014'
-        self.u_infinity_signs = ur'\u221e'
-
-    def _lowercase(self, text):
-        return text.lower()
-
-    def _preprocess_unicode(self, text):
-        text = re.sub(self.u_single_quotes, "'", text)
-        text = re.sub(self.u_double_quotes, '"', text)
-        text = re.sub(self.u_spaces, ' ', text)
-        text = re.sub(self.u_en_dashes, '-', text)
-        text = re.sub(self.u_em_dashes, '--', text)
-        text = re.sub(self.u_infinity_signs, '__INF__', text)
-        return text
-
-    def _preprocess_custom_general(self, text):
-        # doing this so nltk tokenizer works better
-        text = re.sub(r'\$', '__DOLLAR_SIGN__', text)
-        text = re.sub(r'%', '__PERCENT_SIGN__', text)
-        text = re.sub(r'\^', '__CARET__', text)
-        text = re.sub(r'&', '__AMPERSAND__', text)
-        text = re.sub(r'\*', '__ASTERISK__', text)
-
-        # deal with music "decades": change e.g. 1980s to '80s and 80s to '80s
-        text = re.sub(r"(19|20|'?)(\d0)s", r"'\2__s", text)
-
-        # get rid of pesky newlines, carriages, tabs which screw up tokenizer
-        text = re.sub(r'(\n|\r|\t)', ' ', text)
-
-        return text
-
-    def _preprocess_custom_specific(self, text):
-        # merge consecutive capitalized words, but not if they start a sentence
-        # meant to extract proper names and some portion of band names
-        text = re.sub(r'[^.!?]([A-Z][a-zA-Z0-9-]*)\s+([A-Z][a-zA-Z0-9-]*)',
-                      r'\1_\2', text)
-
-        # band chk chk chk
-        text = re.sub(r"""\s!!!([\s,.'"])""", r'chk_chk_chk\1', text)
-
-        # glue together things joined with an ampersand
-        # text = re.sub(r'\b([A-Z][a-z]*)(\s+)&(\s+)+([A-Z][a-z]*)\b',
-        #              r'\1__AMPERSAND__\4', text)
-        text = re.sub(r'\s+&\s+', '&', text)
-
-        ################################
-        #  custom genre manipulation   #
-        ################################
-
-        # genres that have a -rock, -pop, R&B, etc.
-        genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues', 'hop',
-                  'rap', 'R&B', 'jazz', 'soul', 'classical', 'songwriter',
-                  'contemporary', 'techno', 'electronica)']
-        regex_part = '|'.join(genres)
-        regex_full = re.compile(r'(\w+)[-/]' + regex_part, flags=re.IGNORECASE)
-        text = regex_full.sub(r'\1_\2', text)
-
-        # split quoted verses (usually rap lyrics, but now always)
-        text = re.sub(r'/', ' / ', text)
-
-        return text
-
-    def __call__(self, text):
-        text = self._preprocess_unicode(text)
-        text = self._preprocess_custom_specific(text)
-        text = self._preprocess_custom_general(text)
-
-        # lowercase last!
-        text = self._lowercase(text)
-        return text
+        print('\nTop albums:')
+        print('\n\t'+'\n\t'.join(artist_album))
+        print('\n')
