@@ -31,11 +31,22 @@ def get_similarities(df, svd_trans, func='raw', normalize=False, n=500):
     all_audio_diffs = []
     all_lsi_sims = []
 
+    df['artists_str'] = df['artists'].apply(lambda x: ' '.join(x))
+    artists_list = df['artists'].tolist()
+
     for i, (sim_vector, seed_features) in enumerate(zip(sims, features), 1):
         if i % 100 == 0:
             print('Gone through {:d} albums'.format(i))
 
+        print(i)
         df['lsi_sims'] = sim_vector
+        cur_artists = artists_list[i-1]
+        sel = np.zeros(df.shape[0])
+        for artist in cur_artists:
+            sel += df['artists_str'].str.contains(artist).values
+        sel = np.bool_(sel)
+        df['lsi_sims'][sel] = 0
+
         df_audiofeats = df[features_and_sims].sort_values('lsi_sims').iloc[-n:]
         other_features = np.float64(df_audiofeats[feature_names].values)
 
@@ -58,19 +69,19 @@ def get_similarities(df, svd_trans, func='raw', normalize=False, n=500):
 
 
 def plot_af_diffs(all_audio_diffs):
+    plt.close('all')
     fig = plt.figure()
     feature_names = ['acoustic', 'dance', 'energy', 'instrument',
                      'live', 'loud', 'speech', 'tempo', 'valence']
-    feature_names = ['sim_func']
     colors = sns.color_palette('Set1', 10)
     for i, feature_name in enumerate(feature_names):
         temp = [seed[feature_name] for seed in all_audio_diffs]
         df = pd.concat(temp)
         df.index.name = 'recc_rank'
-        mean_diff = df.groupby(df.index).mean()[1:]
-        std_diff = df.groupby(df.index).std()
+        mean_diff = df.groupby(df.index).mean()[1:].values.flatten()
+        sem_diff = df.groupby(df.index).sem()[1:].values.flatten()
         ax = fig.add_subplot(3, 3, i+1)
-        plot_indiv_diff(ax, mean_diff, std_diff, colors[i])
+        plot_indiv_diff(ax, mean_diff, sem_diff, feature_name, colors[i])
 
     sns.despine(offset=5, trim=True)
 
