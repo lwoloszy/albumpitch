@@ -252,10 +252,10 @@ def print_top_words(vectorizer, clf, class_labels, n=10):
               " ".join(feature_names[j] for j in top_n)))
 
 
-def print_recommendations(df, svd_trans, album_idx):
+def print_recommendations(df, svd_trans, album_idx, n=25):
     sims = cosine_similarity(svd_trans[album_idx, :].reshape(1, -1), svd_trans)
-    df_temp = df.iloc[np.argsort(sims).flatten()[-25:]]
-    df_temp['sim_scores'] = np.sort(sims.flatten())[-25:]
+    df_temp = df.iloc[np.argsort(sims).flatten()[-n:]]
+    df_temp['sim_scores'] = np.sort(sims.flatten())[-n:]
     print df_temp[['url', 'genres', 'sim_scores']][::-1]
 
 
