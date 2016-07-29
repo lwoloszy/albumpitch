@@ -13,9 +13,9 @@ def get_similarities(df, svd_trans, func='raw', normalize=False, n=500):
     # as scraped from spotify (and matched in pitchfork)
     df['has_audio_features'] = ~df['acoustic'].isnull()
 
-    feature_names = ['acoustic', 'dance', 'energy', 'instrument', 'key',
+    feature_names = ['acoustic', 'dance', 'energy', 'instrument',
                      'live', 'loud', 'speech', 'tempo', 'valence']
-    features_and_sims = feature_names + ['sims']
+    features_and_sims = feature_names + ['lsi_sims']
 
     valid_idx = np.where(df['has_audio_features'])[0]
     df = df.iloc[valid_idx]
@@ -35,8 +35,8 @@ def get_similarities(df, svd_trans, func='raw', normalize=False, n=500):
         if i % 100 == 0:
             print('Gone through {:d} albums'.format(i))
 
-        df['sims'] = sim_vector
-        df_audiofeats = df[features_and_sims].sort_values('sims').iloc[-n:]
+        df['lsi_sims'] = sim_vector
+        df_audiofeats = df[features_and_sims].sort_values('lsi_sims').iloc[-n:]
         other_features = np.float64(df_audiofeats[feature_names].values)
 
         if not hasattr(func, '__call__'):
@@ -51,7 +51,8 @@ def get_similarities(df, svd_trans, func='raw', normalize=False, n=500):
                     columns=['sim_func']).
                 reset_index(drop=True))
 
-        all_lsi_sims.append(df_audiofeats['sims'][::-1].reset_index(drop=True))
+        all_lsi_sims.append(df_audiofeats[['lsi_sims']][::-1]
+                            .reset_index(drop=True))
 
     return all_lsi_sims, all_audio_diffs
 
@@ -115,3 +116,53 @@ def plot_indiv_diff(ax, y, y_e, y_label, color):
     ax.set_ylabel(y_label)
     ax.set_xlim(0, 500)
     ax.set_ylim(np.min(y), np.max(y)*1.1)
+
+
+def plot_cosafs_vs_coslsi(all_lsi_sims, all_cos_sims, win_size=100):
+    plt.close('all')
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    feature_name = ['sim_func']
+    df_cos = pd.concat([seed[feature_name][1:] for seed in all_cos_sims])
+    df_lsi = pd.concat([seed[:][1:] for seed in all_lsi_sims])
+
+    x = df_lsi.values
+    y = df_cos.values.flatten()
+
+    argsorted = np.argsort(x)[::-1]
+    x = x[argsorted]
+    y = y[argsorted]
+    x = pd.rolling_mean(x, win_size)
+    y = pd.rolling_mean(y, win_size)
+    ax.add_line(plt.Line2D(x[~np.isnan(x)], y[~np.isnan(y)], color='k'))
+    ax.set_xlim(np.nanmin(x), np.nanmax(x))
+    ax.set_ylim(np.nanmin(y), np.nanmax(y))
+
+    sns.despine(offset=5, trim=True)
+    ax.set_xlabel('LSI cosine similarity')
+    ax.set_ylabel('Spotify AF cosine similarity')
+
+
+def permutation_cosafs_vs_coslsi(all_lsi_sims, all_cos_sims, n_perm=1000):
+    plt.close('all')
+    feature_name = ['sim_func']
+    df_cos = pd.concat([seed[feature_name][1:] for seed in all_cos_sims])
+    df_lsi = pd.concat([seed['sims'][1:] for seed in all_lsi_sims])
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    x = df_lsi.values
+    y = df_cos.values.flatten()
+
+    real_corr = np.corrcoef(x, y)[0, 1]
+
+    permuted_corrs = []
+    for i in xrange(n_perm):
+        print(i)
+        permuted_x = x[np.random.permutation(len(x))]
+        permuted_corrs.append(np.corrcoef(permuted_x, y)[0, 1])
+
+    real_corr = np.corrcoef(x, y)[0, 1]
+
+    return permuted_corrs, real_corr
