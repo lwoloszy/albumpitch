@@ -30,8 +30,8 @@ class CustomTokenizer(object):
                                   x not in self.stopset),
                        words)
 
-        # strip punctuation and stem
-        words = [self.stemmer.stem(word.strip(string.punctuation))
+        # strip punctuation, lowercase and stem
+        words = [self.stemmer.stem(word.strip(string.punctuation).lower())
                  for word in words]
 
         return words
@@ -45,9 +45,6 @@ class CustomTextPreprocessor(object):
         self.u_en_dashes = ur'\u2013'
         self.u_em_dashes = ur'\u2014'
         self.u_infinity_signs = ur'\u221e'
-
-    def _lowercase(self, text):
-        return text.lower()
 
     def _preprocess_unicode(self, text):
         text = re.sub(self.u_single_quotes, "'", text)
@@ -112,8 +109,6 @@ class CustomTextPreprocessor(object):
         text = self._preprocess_custom_specific(text)
         text = self._preprocess_custom_general(text)
 
-        # lowercase last!
-        text = self._lowercase(text)
         return text
 
 
