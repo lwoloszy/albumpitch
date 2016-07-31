@@ -1,5 +1,6 @@
 import re
 import string
+from itertools import groupby
 
 import nltk
 
@@ -14,24 +15,36 @@ class CustomTokenizer(object):
             self.stopset = set()
 
         if stemmer:
-            self.stemmer = stemmer
+            self.stemmer = stemmer.stem
         else:
             self.stemmer = lambda x: x
 
     def __call__(self, doc):
-        # use nltk's intelligent tokenizer, but we'll do some postprocessing
-        words = nltk.tokenize.word_tokenize(doc)
+        # tokenize into sentences
+        sents = nltk.tokenize.sent_tokenize(doc)
 
-        # split on hyphens manually
-        words = [subword for word in words for subword in word.split('-')]
+        # tag with putative parts of speech
+        word_pos_tups_lst = [nltk.pos_tag(nltk.word_tokenize(sent))
+                             for sent in sents]
+
+        # merge consecutive proper nouns in hopes of identifying band names
+        words = [merge_proper_nouns(word_pos_tups)
+                 for word_pos_tups in word_pos_tups_lst]
+
+        # unpack and lowercase
+        words = [word.lower() for sublist in words for word in sublist]
+
+        # split on hyphens and remove stopwords/punctuation
+        words = [subword for word in words for subword in word.split('-')
+                 if subword.strip(string.punctuation) and subword not in self.stopset]
 
         # remove stopwords/punctuation
-        words = filter(lambda x: (x.strip(string.punctuation) and
-                                  x not in self.stopset),
-                       words)
+        # words = filter(lambda x: (x.strip(string.punctuation) and
+        #                          x not in self.stopset),
+        #               words)
 
         # strip punctuation and stem
-        words = [self.stemmer.stem(word.strip(string.punctuation).lower())
+        words = [self.stemmer(word.strip(string.punctuation))
                  for word in words]
 
         return words
@@ -84,8 +97,8 @@ class CustomTextPreprocessor(object):
     def _preprocess_custom_specific(self, text):
         # merge consecutive capitalized words, but not if they start a sentence
         # meant to extract proper names and some percentage of band names
-        text = re.sub(r'(?<![.!?]\s)([A-Z][\w$&%]*)\s+([A-Z][\w$&%]*)',
-                      r'\1_\2', text)
+        #text = re.sub(r'(?<![.!?]\s)([A-Z][\w$&%]*)\s+([A-Z][\w$&%]*)',
+        #              r'\1_\2', text)
 
         # band chk chk chk
         text = re.sub(r"""\s!!!([\s,.'"])""", r'chk_chk_chk\1', text)
@@ -103,7 +116,8 @@ class CustomTextPreprocessor(object):
         text = regex_full.sub(r'\1 \2 \1_\2', text)
 
         # split quoted verses (usually rap lyrics, but now always)
-        text = re.sub(r'/', ' / ', text)
+        text = re.sub(r'/', ' ', text)
+        text = re.sub(r'[\(\)]', '', text)
 
         return text
 
@@ -113,7 +127,7 @@ class CustomTextPreprocessor(object):
         text = self._preprocess_custom_general(text)
 
         # lowercase last!
-        text = self._lowercase(text)
+        # text = self._lowercase(text)
         return text
 
 
@@ -126,3 +140,15 @@ def prepend_first_name(artist, text):
     regex = re.compile(r'(?<!{:s})\s+({:s})'.format(fn, ln))
     replacement = ' {:s}'.format(fn) + r'_\1'
     return regex.sub(replacement, text)
+
+
+def merge_proper_nouns(words_pos_tups):
+    out = []
+    iterator = groupby(words_pos_tups,
+                       lambda x: 'NNP' in x or 'NNPS' in x)
+    for key, group in iterator:
+        if key:
+            out.append('_'.join([elem[0] for elem in group]))
+        else:
+            out.extend([elem[0] for elem in group])
+    return out
