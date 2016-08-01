@@ -1,6 +1,7 @@
 import logging
 from gensim import corpora, models, similarities
 import text_preprocess as textpre
+reload(textpre)
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.INFO)
@@ -23,7 +24,6 @@ class MyCorpusForDict(object):
 
     def __iter__(self):
         for i, doc in enumerate(self.df.itertuples()):
-            print(i)
             doc = doc._asdict()
             if self.pretokenized:
                 yield doc['tokenized_text']
@@ -50,8 +50,9 @@ def create_tfidf(dictionary, corpus):
     return tfidf, corpus_tfidf
 
 
-def create_lsi(dictionary, corpus_tfidf):
-    lsi = models.LsiModel(corpus_tfidf, id2word=dictionary, num_topics=200)
+def create_lsi(dictionary, corpus_tfidf, num_topics=200):
+    lsi = models.LsiModel(corpus_tfidf, id2word=dictionary,
+                          num_topics=num_topics)
     corpus_lsi = lsi[corpus_tfidf]
     return lsi, corpus_lsi
 
@@ -72,6 +73,19 @@ def get_most_similar(df, seed, dictionary, tfidf, lsi, index, n=10):
     vec_tfidf = tfidf[vec_bow]
     vec_lsi = lsi[vec_tfidf]
     sims = index[vec_lsi]
+    sims = sorted(enumerate(sims), key=lambda item: -item[1])
+
+    idxs = [tup[0] for tup in sims[0:n]]
+    scores = [tup[1] for tup in sims[0:n]]
+    df_temp = df.iloc[idxs]
+    df_temp['sim_scores'] = scores
+    print df_temp[['url', 'genres', 'sim_scores']]
+
+
+def get_most_similar2(df, seed, dictionary, lda, index, n=10):
+    vec_bow = dictionary.doc2bow(df['tokenized_text'].iloc[seed])
+    vec_lda = lda[vec_bow]
+    sims = index[vec_lda]
     sims = sorted(enumerate(sims), key=lambda item: -item[1])
 
     idxs = [tup[0] for tup in sims[0:n]]
