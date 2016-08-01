@@ -157,9 +157,9 @@ def extended_tfidf(df):
     artists = df['artists'].map(lambda x: ', '.join(x)).tolist()
     album = df['album'].tolist()
 
-    # new_reviews = []
-    # for i, (artist, review) in enumerate(zip(artists, reviews)):
-    #    new_reviews.append(textpre.prepend_first_name(artist, review))
+    new_reviews = []
+    for i, (artist, review) in enumerate(zip(artists, reviews)):
+        new_reviews.append(textpre.prepend_first_name(artist, review))
 
     #reviews = new_reviews
     together = [abstracts, reviews, genres, artists, album]

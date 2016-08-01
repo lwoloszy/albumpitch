@@ -112,9 +112,9 @@ class CustomTextPreprocessor(object):
     def _substitute_custom(self, text):
         # merge consecutive capitalized words, but not if at the start
         # of sentence
-        if self.merge_capitals:
-            text = re.sub(r'(?<![.!?]\s)([A-Z][\w$&%]*)\s+([A-Z][\w$&%]*)',
-                          r'\1_\2', text)
+        if self.merge_capitalized:
+            text = re.sub(r'(?<![.!?])(\s+)([A-Z][\w$&%]*)\s+([A-Z][\w$&%]*)',
+                          r'\1\2_\3', text)
 
         # band chk chk chk, doing the best I can here, likely not perfect
         text = re.sub(r"""\s!!!([\s,.'"])""", r'chk_chk_chk\1', text)
@@ -127,19 +127,19 @@ class CustomTextPreprocessor(object):
         text = re.sub(r'DJ ?/rupture', 'DJ_Rupture', text)
 
         # glue together things joined with an ampersand
-        text = re.sub(r'\s+&\s+', '&', text)
+        # text = re.sub(r'\s+&\s+', '&', text)
 
         # construct genre 'bigrams' (based on prior discovery)
         # if self.subgenres_regex:
         #    text = self.subgenres_regex.sub(r'\1 \2 \1_\2', text)
 
-        genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues', 'hop',
-                  'rap', 'R&B', 'jazz', 'soul', 'classical', 'songwriter',
-                  'contemporary', 'funk', 'techno', 'wave', 'electro',
-                  'electronica)']
-        regex_part = '|'.join(genres)
-        regex_full = re.compile(r'\b(\w+)[-/ ]' + regex_part)
-        text = regex_full.sub(r'\1 \2 \1_\2', text)
+        # genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues', 'hop',
+        #          'rap', 'R&B', 'jazz', 'soul', 'classical', 'songwriter',
+        #          'contemporary', 'funk', 'techno', 'wave', 'electro',
+        #          'electronica)']
+        # regex_part = '|'.join(genres)
+        # regex_full = re.compile(r'\b(\w+)[-/ ]' + regex_part)
+        # text = regex_full.sub(r'\1 \2 \1_\2', text)
 
         # split quoted verses (usually lyrics, but now always)
         text = re.sub(r'/', ' ', text)
@@ -150,8 +150,11 @@ class CustomTextPreprocessor(object):
         # keep all ampersands
         text = re.sub(r'&', '__AMPERSAND__', text)
 
-        # keep dollar signs if they don't precede digit
+        # keep dollar signs if they don't precede digit (rapper names)
         text = re.sub(r'\$(?!\d)', '__DOLLAR_SIGN__', text)
+
+        # keep exclamation points if they follow capitalized word (band names)
+        text = re.sub(r'([A-Z]+\w*)!', r'\1__EXCLAMATION__', text)
 
         # convert symbol % to word if it follows digit
         text = re.sub(r'(?<=\d)%', ' percent', text)
@@ -269,6 +272,7 @@ def tokenize_and_save():
         print(i)
 
         text = concat_review_elements(doc)
+
         processed_text = text_preprocessor.preprocess(text)
         tokenized_text = text_tokenizer.tokenize(processed_text)
 
@@ -282,14 +286,33 @@ def tokenize_and_save():
     client.close()
 
 
-def concat_review_elements(doc):
+def pretokenize(df):
+    stopset = get_stopset()
+    stemmer = get_stemmer('snowball')
+    preprocessor = CustomTextPreprocessor(
+        merge_capitalized=True)
+    tokenizer = CustomTokenizer(
+        stopset=stopset, stemmer=stemmer)
+
+    texts = []
+    for i, doc in enumerate(df.itertuples(), 1):
+        if i % 100 == 0:
+            print('Tokenized {:d} documents'.format(i))
+        doc = doc._asdict()
+        text = concat_review_elements(doc)
+        texts.append(tokenizer(preprocessor(text)))
+    df['tokenized_text'] = texts
+
+
+def concat_review_elements(doc, prepend=True):
     abstract = doc['abstract']
     review = doc['review']
     genre = u', '.join(doc['genres'])
     artist = u', '.join(doc['artists'])
     album = doc['album']
 
-    review = prepend_first_name(artist, review)
+    if prepend:
+        review = prepend_first_name(artist, review)
 
     entry = [abstract, review, genre, artist, album]
     return ', '.join(entry)
@@ -307,7 +330,7 @@ def get_stopset():
                       for stopword in stopwords])
 
     # custom stop words
-    stopwords.extend(['lp', 'ep',
+    stopwords.extend(['lp', 'lps', 'ep', 'eps',
                       'record', 'records',
                       'label', 'labels',
                       'release', 'releases', 'released',
