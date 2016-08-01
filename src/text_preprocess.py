@@ -3,12 +3,11 @@ import string
 from itertools import groupby
 
 import nltk
-from nltk.stem import PorterStemmer
+from nltk.stem import PorterStemmer, SnowballStemmer
 
 from stop_words import get_stop_words
 
 from pymongo import MongoClient
-import time
 
 
 class CustomTokenizer(object):
@@ -25,9 +24,6 @@ class CustomTokenizer(object):
             self.stemmer = lambda x: x
 
     def tokenize(self, text):
-        t = time.time()
-        text = text.lower()
-
         words = nltk.word_tokenize(text)
 
         # split on hyphens manually
@@ -36,7 +32,6 @@ class CustomTokenizer(object):
         # remove stopwords/punctuation and stem
         words = [self.stemmer(word.strip(string.punctuation)) for word in words
                  if word.strip(string.punctuation) and word not in self.stopset]
-        print(time.time()-t)
 
         return words
 
@@ -72,7 +67,6 @@ class CustomTokenizerWithPOS(CustomTokenizer):
         # strip punctuation and stem
         words = [self.stemmer(word.strip(string.punctuation))
                  for word in words]
-        print(time.time()-t)
 
         return words
 
@@ -81,7 +75,7 @@ class CustomTokenizerWithPOS(CustomTokenizer):
 
 class CustomTextPreprocessor(object):
 
-    def __init__(self, subgenres_file=None, merge_capitals=False):
+    def __init__(self, subgenres_file=None, merge_capitalized=False):
         self.u_single_quotes = ur"['\u2018\u2019\u0060\u00b4]"
         self.u_double_quotes = ur'["\u201c\u201d]'
         self.u_spaces = ur'\xa0'
@@ -89,7 +83,7 @@ class CustomTextPreprocessor(object):
         self.u_em_dashes = ur'\u2014'
 
         # are we going to merge consecutive capitalized words?
-        self.merge_capitals = merge_capitals
+        self.merge_capitalized = merge_capitalized
 
         self.subgenres_regex = None
         if subgenres_file:
@@ -136,8 +130,16 @@ class CustomTextPreprocessor(object):
         text = re.sub(r'\s+&\s+', '&', text)
 
         # construct genre 'bigrams' (based on prior discovery)
-        if self.subgenres_regex:
-            text = self.subgenres_regex.sub(r'\1 \2 \1_\2', text)
+        # if self.subgenres_regex:
+        #    text = self.subgenres_regex.sub(r'\1 \2 \1_\2', text)
+
+        genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues', 'hop',
+                  'rap', 'R&B', 'jazz', 'soul', 'classical', 'songwriter',
+                  'contemporary', 'funk', 'techno', 'wave', 'electro',
+                  'electronica)']
+        regex_part = '|'.join(genres)
+        regex_full = re.compile(r'\b(\w+)[-/ ]' + regex_part)
+        text = regex_full.sub(r'\1 \2 \1_\2', text)
 
         # split quoted verses (usually lyrics, but now always)
         text = re.sub(r'/', ' ', text)
@@ -321,5 +323,8 @@ def get_stopset():
     return stopset
 
 
-def get_stemmer():
-    return PorterStemmer()
+def get_stemmer(name):
+    if name == 'porter':
+        return PorterStemmer()
+    elif name == 'snowball':
+        return SnowballStemmer('english')

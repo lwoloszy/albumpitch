@@ -157,11 +157,11 @@ def extended_tfidf(df):
     artists = df['artists'].map(lambda x: ', '.join(x)).tolist()
     album = df['album'].tolist()
 
-    new_reviews = []
-    for i, (artist, review) in enumerate(zip(artists, reviews)):
-        new_reviews.append(textpre.prepend_first_name(artist, review))
+    # new_reviews = []
+    # for i, (artist, review) in enumerate(zip(artists, reviews)):
+    #    new_reviews.append(textpre.prepend_first_name(artist, review))
 
-    reviews = new_reviews
+    #reviews = new_reviews
     together = [abstracts, reviews, genres, artists, album]
     entries = [', '.join(entry) for entry in zip(*together)]
 
@@ -174,12 +174,10 @@ def extended_tfidf(df):
     #    stopwords = [stopword.strip() for stopword in stopwords]
 
     stopset = textpre.get_stopset()
-    porter = textpre.get_stemmer()
+    stemmer = textpre.get_stemmer('snowball')
 
-    ctpre = textpre.CustomTextPreprocessor(
-        subgenres_file='../data/subgenres.txt',
-        merge_capitals=True)
-    ctok = textpre.CustomTokenizer(stopset, porter)
+    ctpre = textpre.CustomTextPreprocessor(merge_capitalized=True)
+    ctok = textpre.CustomTokenizer(stopset, stemmer)
 
     tfidf = TfidfVectorizer(stop_words=stopset,
                             preprocessor=ctpre, tokenizer=ctok,
