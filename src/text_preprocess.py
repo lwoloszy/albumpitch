@@ -1,6 +1,7 @@
 import re
 import string
 from itertools import groupby
+from unidecode import unidecode
 
 import nltk
 from nltk.stem import PorterStemmer, SnowballStemmer
@@ -26,12 +27,12 @@ class CustomTokenizer(object):
     def tokenize(self, text):
         words = nltk.word_tokenize(text)
 
-        # split on hyphens manually
-        words = [subword for word in words for subword in word.split('-')]
+        # split on hyphens manually and lowercase
+        words = [subword.lower() for word in words for subword in word.split('-')]
 
-        # remove stopwords/punctuation and stem
+        # strip punctuation, remove stopwords and stem
         words = [self.stemmer(word.strip(string.punctuation)) for word in words
-                 if word.strip(string.punctuation) and word not in self.stopset]
+                 if word not in self.stopset and word.strip(string.punctuation)]
 
         return words
 
@@ -64,9 +65,8 @@ class CustomTokenizerWithPOS(CustomTokenizer):
         words = [subword for word in words for subword in word.split('-')
                  if subword and subword not in self.stopset]
 
-        # strip punctuation and stem
-        words = [self.stemmer(word.strip(string.punctuation))
-                 for word in words]
+        # stem
+        words = [self.stemmer(word) for word in words]
 
         return words
 
@@ -76,79 +76,65 @@ class CustomTokenizerWithPOS(CustomTokenizer):
 class CustomTextPreprocessor(object):
 
     def __init__(self, subgenres_file=None, merge_capitalized=False):
-        self.u_single_quotes = ur"['\u2018\u2019\u0060\u00b4]"
-        self.u_double_quotes = ur'["\u201c\u201d]'
-        self.u_spaces = ur'\xa0'
-        self.u_en_dashes = ur'\u2013'
-        self.u_em_dashes = ur'\u2014'
+    #    self.u_single_quotes = ur"['\u2018\u2019\u0060\u00b4]"
+    #    self.u_double_quotes = ur'["\u201c\u201d]'
+    #    #self.u_spaces = ur'[\xa0\x01\x02\x03\x04\x05\x06\x07\x08\x09]'
+    #    self.u_spaces = ur'\xa0'
+    #    self.u_en_dashes = ur'\u2013'
+    #    self.u_em_dashes = ur'\u2014'
 
         # are we going to merge consecutive capitalized words?
         self.merge_capitalized = merge_capitalized
 
-        self.subgenres_regex = None
-        if subgenres_file:
-            with open(subgenres_file) as f:
-                subgenres = f.readlines()
+    #def _substitute_unicode(self, text):
+    #    text = re.sub(self.u_single_quotes, "'", text)
+    #    text = re.sub(self.u_double_quotes, '"', text)
+    #    text = re.sub(self.u_spaces, ' ', text)
+    #    text = re.sub(self.u_en_dashes, '-', text)
+    #    text = re.sub(self.u_em_dashes, '--', text)
+    #    return text
 
-            # create regular expression to normalize subgenres styling
-            subgenres = [subgenre.strip() for subgenre in subgenres]
-            genre_modifiers = [subgenre.split()[0]
-                               for subgenre in subgenres]
-            genre_bases = [subgenre.split()[1]
-                           for subgenre in subgenres]
-            regex1 = r'(' + r'|'.join(genre_modifiers) + r')'
-            regex2 = r'(' + r'|'.join(genre_bases) + r')'
-            regex = regex1 + r'[-/ ]' + regex2
-            self.subgenres_regex = re.compile(regex, flags=re.IGNORECASE)
+    def normalize(self, text):
+        # keep hip-hop as one word
+        text = re.sub(r'(hip)[-/\s](hop)', r'\1_\2', text)
 
-    def _substitute_unicode(self, text):
-        text = re.sub(self.u_single_quotes, "'", text)
-        text = re.sub(self.u_double_quotes, '"', text)
-        text = re.sub(self.u_spaces, ' ', text)
-        text = re.sub(self.u_en_dashes, '-', text)
-        text = re.sub(self.u_em_dashes, '--', text)
-        return text
+        # keep singer/songwriter as one word
+        text = re.sub(r'(singer)[-/\s](songwriter)', r'\1_\2', text)
 
-    def _substitute_custom(self, text):
         # merge consecutive capitalized words, but not if at the start
-        # of sentence
+        # of sentence (or something resembling that)
         if self.merge_capitalized:
-            text = re.sub(r'(?<![.!?])(\s+)([A-Z][\w$&%]*)\s+([A-Z][\w$&%]*)',
-                          r'\1\2_\3', text)
+            text = re.sub(
+                r'(?<![.!?])([-\s\"\']+)([A-Z]+[\w$&%]*)\s+([A-Z]+[\w$&%]*)',
+                r'\1\2_\3', text)
 
         # band chk chk chk, doing the best I can here, likely not perfect
         text = re.sub(r"""\s!!!([\s,.'"])""", r'chk_chk_chk\1', text)
 
-        # any DJ followed by word that starts with capital letter,
-        # glue together (separator can be either a space or hyphen)
-        text = re.sub(r'DJ[- ]([A-Z]+\w*)', r'DJ_\1', text)
-
         # DJ/rupture correction
-        text = re.sub(r'DJ ?/rupture', 'DJ_Rupture', text)
+        text = re.sub(r'DJ\s?/rupture', 'DJ_Rupture', text)
 
         # glue together things joined with an ampersand
         # text = re.sub(r'\s+&\s+', '&', text)
 
-        # construct genre 'bigrams' (based on prior discovery)
-        # if self.subgenres_regex:
-        #    text = self.subgenres_regex.sub(r'\1 \2 \1_\2', text)
+        # subgenre discovery... construct "bigrams" but only for musical
+        # terms
+        genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues',
+                  'rap', 'R&B', 'jazz', 'soul', 'classical', 'hip_hop',
+                  'contemporary', 'funk', 'techno', 'wave', 'electro',
+                  'electronica', 'singer_songwriter)']
+        regex_part = '|'.join(genres)
+        regex_full = re.compile(r'\b(\w{3,})[-/\s]' + regex_part)
+        text = regex_full.sub(r'\1 \2 \1_\2', text)
 
-        # genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues', 'hop',
-        #          'rap', 'R&B', 'jazz', 'soul', 'classical', 'songwriter',
-        #          'contemporary', 'funk', 'techno', 'wave', 'electro',
-        #          'electronica)']
-        # regex_part = '|'.join(genres)
-        # regex_full = re.compile(r'\b(\w+)[-/ ]' + regex_part)
-        # text = regex_full.sub(r'\1 \2 \1_\2', text)
-
-        # split quoted verses (usually lyrics, but now always)
+        # split quoted verses (usually lyrics, but not always)
         text = re.sub(r'/', ' ', text)
 
         # remove parentheses as these screw up part of speech tagger
         text = re.sub(r'[\(\)]', '', text)
 
-        # keep all ampersands
-        text = re.sub(r'&', '__AMPERSAND__', text)
+        # keep embedded ampersands (mostly for R&B)
+        text = re.sub(r'(\w+)&(\w+)', r'\1__AMPERSAND__\2', text)
 
         # keep dollar signs if they don't precede digit (rapper names)
         text = re.sub(r'\$(?!\d)', '__DOLLAR_SIGN__', text)
@@ -171,8 +157,9 @@ class CustomTextPreprocessor(object):
         return text
 
     def preprocess(self, text):
-        text = self._substitute_unicode(text)
-        text = self._substitute_custom(text)
+        #text = self._substitute_unicode(text)
+        text = unidecode(text)
+        text = self.normalize(text)
         return text
 
     __call__ = preprocess
@@ -289,10 +276,8 @@ def tokenize_and_save():
 def pretokenize(df):
     stopset = get_stopset()
     stemmer = get_stemmer('snowball')
-    preprocessor = CustomTextPreprocessor(
-        merge_capitalized=True)
-    tokenizer = CustomTokenizer(
-        stopset=stopset, stemmer=stemmer)
+    preprocessor = CustomTextPreprocessor(merge_capitalized=True)
+    tokenizer = CustomTokenizer(stopset=stopset, stemmer=stemmer)
 
     texts = []
     for i, doc in enumerate(df.itertuples(), 1):
@@ -301,7 +286,7 @@ def pretokenize(df):
         doc = doc._asdict()
         text = concat_review_elements(doc)
         texts.append(tokenizer(preprocessor(text)))
-    df['tokenized_text'] = texts
+    df.loc[:, 'tokenized_text'] = texts
 
 
 def concat_review_elements(doc, prepend=True):
@@ -315,34 +300,36 @@ def concat_review_elements(doc, prepend=True):
         review = prepend_first_name(artist, review)
 
     entry = [abstract, review, genre, artist, album]
-    return ', '.join(entry)
+    return ' '.join(entry)
 
 
 def get_stopset():
-    stopwords = get_stop_words('en')
+    stopset = set(get_stop_words('en'))
 
     # get those contractions
-    stopwords.extend(nltk.word_tokenize(' '.join(stopwords)))
+    add_stops = nltk.word_tokenize(' '.join(stopset))
+    stopset.update(add_stops)
 
     # make sure to get contractions without punctuation, so that
     # order of operations doesn't matter later
-    stopwords.extend([stopword.strip(string.punctuation)
-                      for stopword in stopwords])
+    add_stops = [stopword.strip(string.punctuation)
+                 for stopword in stopset]
+    stopset.update(add_stops)
 
     # custom stop words
-    stopwords.extend(['lp', 'lps', 'ep', 'eps',
-                      'record', 'records',
-                      'label', 'labels',
-                      'release', 'releases', 'released',
-                      'listen', 'listens', 'listened', 'listener',
-                      'version', 'versions',
-                      'album', 'albums',
-                      'song', 'songs',
-                      'track', 'tracks',
-                      'sound', 'sounds',
-                      'thing', 'things', 'something',
-                      'music'])
-    stopset = set(stopwords)
+    add_stops = [u'lp', u'ep',
+                 u'record', u'records', u'recorded'
+                 u'label', u'labels',
+                 u'release', u'releases', u'released',
+                 u'listen', u'listens', u'listened', u'listener',
+                 u'version', u'versions',
+                 u'album', u'albums',
+                 u'song', u'songs',
+                 u'track', u'tracks',
+                 u'sound', u'sounds',
+                 u'thing', u'things', u'something',
+                 u'music']
+    stopset.update(add_stops)
     return stopset
 
 
