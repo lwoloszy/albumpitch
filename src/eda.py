@@ -177,7 +177,7 @@ def extended_tfidf(df):
     porter = textpre.get_stemmer()
 
     ctpre = textpre.CustomTextPreprocessor(
-        # subgenres_file='../data/subgenres.txt',
+        subgenres_file='../data/subgenres.txt',
         merge_capitals=True)
     ctok = textpre.CustomTokenizer(stopset, porter)
 

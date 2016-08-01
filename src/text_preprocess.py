@@ -8,6 +8,7 @@ from nltk.stem import PorterStemmer
 from stop_words import get_stop_words
 
 from pymongo import MongoClient
+import time
 
 
 class CustomTokenizer(object):
@@ -24,6 +25,7 @@ class CustomTokenizer(object):
             self.stemmer = lambda x: x
 
     def tokenize(self, text):
+        t = time.time()
         text = text.lower()
 
         words = nltk.word_tokenize(text)
@@ -31,13 +33,10 @@ class CustomTokenizer(object):
         # split on hyphens manually
         words = [subword for word in words for subword in word.split('-')]
 
-        # remove stopwords/punctuation
-        words = filter(lambda x: (x.strip(string.punctuation) and
-                                  x not in self.stopset), words)
-
-        # strip punctuation and stem
-        words = [self.stemmer(word.strip(string.punctuation))
-                 for word in words]
+        # remove stopwords/punctuation and stem
+        words = [self.stemmer(word.strip(string.punctuation)) for word in words
+                 if word.strip(string.punctuation) and word not in self.stopset]
+        print(time.time()-t)
 
         return words
 
@@ -73,6 +72,7 @@ class CustomTokenizerWithPOS(CustomTokenizer):
         # strip punctuation and stem
         words = [self.stemmer(word.strip(string.punctuation))
                  for word in words]
+        print(time.time()-t)
 
         return words
 
