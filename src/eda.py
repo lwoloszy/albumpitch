@@ -35,7 +35,7 @@ def get_documents(collection='pitchfork_full'):
     agg = coll.aggregate(
         [{'$project':
           {'_id': 0, 'abstract': 1, 'album': 1, 'artists': 1,
-           'review': 1, 'genres': 1, 'url': 1}}])
+           'review': 1, 'genres': 1, 'labels': 1, 'url': 1}}])
     client.close()
 
     agg = list(agg)

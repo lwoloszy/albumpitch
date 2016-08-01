@@ -75,24 +75,9 @@ class CustomTokenizerWithPOS(CustomTokenizer):
 
 class CustomTextPreprocessor(object):
 
-    def __init__(self, subgenres_file=None, merge_capitalized=False):
-    #    self.u_single_quotes = ur"['\u2018\u2019\u0060\u00b4]"
-    #    self.u_double_quotes = ur'["\u201c\u201d]'
-    #    #self.u_spaces = ur'[\xa0\x01\x02\x03\x04\x05\x06\x07\x08\x09]'
-    #    self.u_spaces = ur'\xa0'
-    #    self.u_en_dashes = ur'\u2013'
-    #    self.u_em_dashes = ur'\u2014'
-
+    def __init__(self, merge_capitalized=True):
         # are we going to merge consecutive capitalized words?
         self.merge_capitalized = merge_capitalized
-
-    #def _substitute_unicode(self, text):
-    #    text = re.sub(self.u_single_quotes, "'", text)
-    #    text = re.sub(self.u_double_quotes, '"', text)
-    #    text = re.sub(self.u_spaces, ' ', text)
-    #    text = re.sub(self.u_en_dashes, '-', text)
-    #    text = re.sub(self.u_em_dashes, '--', text)
-    #    return text
 
     def normalize(self, text):
         # keep hip-hop as one word
@@ -100,6 +85,15 @@ class CustomTextPreprocessor(object):
 
         # keep singer/songwriter as one word
         text = re.sub(r'(singer)[-/\s](songwriter)', r'\1_\2', text)
+
+        # subgenre discovery... construct "bigrams" but only for musical
+        # terms, separator can be hyphen, forward slash or space character
+        genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues',
+                  'rap', 'R&B', 'jazz', 'soul', 'classical', 'hip_hop',
+                  'contemporary', 'funk', 'techno', 'wave', 'electro',
+                  'electronica', 'singer_songwriter)']
+        regex = re.compile(r'\b(\w{3,})[-/\s]' + '|'.join(genres))
+        text = regex.sub(r'\1 \2 \1_\2', text)
 
         # merge consecutive capitalized words, but not if at the start
         # of sentence (or something resembling that)
@@ -113,19 +107,6 @@ class CustomTextPreprocessor(object):
 
         # DJ/rupture correction
         text = re.sub(r'DJ\s?/rupture', 'DJ_Rupture', text)
-
-        # glue together things joined with an ampersand
-        # text = re.sub(r'\s+&\s+', '&', text)
-
-        # subgenre discovery... construct "bigrams" but only for musical
-        # terms
-        genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues',
-                  'rap', 'R&B', 'jazz', 'soul', 'classical', 'hip_hop',
-                  'contemporary', 'funk', 'techno', 'wave', 'electro',
-                  'electronica', 'singer_songwriter)']
-        regex_part = '|'.join(genres)
-        regex_full = re.compile(r'\b(\w{3,})[-/\s]' + regex_part)
-        text = regex_full.sub(r'\1 \2 \1_\2', text)
 
         # split quoted verses (usually lyrics, but not always)
         text = re.sub(r'/', ' ', text)
@@ -292,14 +273,15 @@ def pretokenize(df):
 def concat_review_elements(doc, prepend=True):
     abstract = doc['abstract']
     review = doc['review']
-    genre = u', '.join(doc['genres'])
-    artist = u', '.join(doc['artists'])
+    genre = u' '.join(doc['genres'])
+    artist = u' '.join(doc['artists'])
+    label = u' '.join(doc['labels'])
     album = doc['album']
 
     if prepend:
         review = prepend_first_name(artist, review)
 
-    entry = [abstract, review, genre, artist, album]
+    entry = [abstract, review, genre, artist, album, label]
     return ' '.join(entry)
 
 
