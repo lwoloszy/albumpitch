@@ -9,7 +9,6 @@ from stop_words import get_stop_words
 
 from pymongo import MongoClient
 
-
 class CustomTokenizer(object):
 
     def __init__(self, stopset=None, stemmer=None):
@@ -25,9 +24,21 @@ class CustomTokenizer(object):
         else:
             self.stemmer = lambda x: x
 
-    def __call__(self, doc):
+    def tokenize(self, text):
+
+        words = nltk.word_tokenize(text)
+
+
+
+class CustomTokenizerWithPOS(CustomTokenizer):
+
+    def __init__(self, stopset=None, stemmer=None):
+        super(CustomTokenizerWithPOS, self).__init__(stopset=stopset,
+                                                     stemmer=stemmer)
+
+    def tokenize(self, text):
         # tokenize into sentences
-        sents = nltk.tokenize.sent_tokenize(doc)
+        sents = nltk.tokenize.sent_tokenize(text)
 
         # tag with putative parts of speech
         word_pos_tups_lst = [nltk.pos_tag(nltk.word_tokenize(sent))
@@ -50,6 +61,8 @@ class CustomTokenizer(object):
                  for word in words]
 
         return words
+
+    __call__ = tokenize
 
 
 class CustomTextPreprocessor(object):
@@ -77,7 +90,7 @@ class CustomTextPreprocessor(object):
             regex = regex1 + r'[-/ ]' + regex2
             self.subgenres_regex = re.compile(regex, flags=re.IGNORECASE)
 
-    def substitute_unicode(self, text):
+    def _substitute_unicode(self, text):
         text = re.sub(self.u_single_quotes, "'", text)
         text = re.sub(self.u_double_quotes, '"', text)
         text = re.sub(self.u_spaces, ' ', text)
@@ -85,7 +98,7 @@ class CustomTextPreprocessor(object):
         text = re.sub(self.u_em_dashes, '--', text)
         return text
 
-    def substitute_custom(self, text):
+    def _substitute_custom(self, text):
         # band chk chk chk, doing the best I can here, likely not perfect
         text = re.sub(r"""\s!!!([\s,.'"])""", r'chk_chk_chk\1', text)
 
@@ -130,8 +143,8 @@ class CustomTextPreprocessor(object):
         return text
 
     def preprocess(self, text):
-        text = self.substitute_unicode(text)
-        text = self.substitute_custom(text)
+        text = self._substitute_unicode(text)
+        text = self._substitute_custom(text)
         return text
 
     __call__ = preprocess
@@ -218,17 +231,18 @@ def tokenize_and_save():
     client = MongoClient()
     db = client['albumpitch']
     coll = db['pitchfork']
-    ctp = CustomTextPreprocessor('../data/subgenres.txt')
 
     stemmer = get_stemmer()
     stopset = get_stopset()
+    text_preprocessor = CustomTextPreprocessor('../data/subgenres.txt')
+    text_tokenizer = CustomTokenizer(stopset=stopset, stemmer=stemmer)
 
     for i, doc in enumerate(coll.find()):
         print(i)
 
         text = concat_review_elements(doc)
-        text = ctp(text)
-        tokenized_text = tokenize(text, stopset, stemmer)
+        processed_text = text_preprocessor.preprocess(text)
+        tokenized_text = text_tokenizer.tokenize(processed_text)
 
         coll.update_one(
             {'_id': doc['_id']},
