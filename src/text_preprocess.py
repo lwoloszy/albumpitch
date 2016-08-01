@@ -9,11 +9,10 @@ from stop_words import get_stop_words
 
 from pymongo import MongoClient
 
+
 class CustomTokenizer(object):
 
     def __init__(self, stopset=None, stemmer=None):
-        self.punctset = set(string.punctuation)
-
         if stopset:
             self.stopset = set(stopset)
         else:
@@ -25,6 +24,7 @@ class CustomTokenizer(object):
             self.stemmer = lambda x: x
 
     def tokenize(self, text):
+        text = text.lower()
 
         words = nltk.word_tokenize(text)
 
@@ -36,7 +36,7 @@ class CustomTokenizer(object):
                                   x not in self.stopset), words)
 
         # strip punctuation and stem
-        words = [self.stemmer.stem(word.strip(string.punctuation).lower())
+        words = [self.stemmer(word.strip(string.punctuation))
                  for word in words]
 
         return words
@@ -81,12 +81,15 @@ class CustomTokenizerWithPOS(CustomTokenizer):
 
 class CustomTextPreprocessor(object):
 
-    def __init__(self, subgenres_file=None):
+    def __init__(self, subgenres_file=None, merge_capitals=False):
         self.u_single_quotes = ur"['\u2018\u2019\u0060\u00b4]"
         self.u_double_quotes = ur'["\u201c\u201d]'
         self.u_spaces = ur'\xa0'
         self.u_en_dashes = ur'\u2013'
         self.u_em_dashes = ur'\u2014'
+
+        # are we going to merge consecutive capitalized words?
+        self.merge_capitals = merge_capitals
 
         self.subgenres_regex = None
         if subgenres_file:
@@ -113,11 +116,17 @@ class CustomTextPreprocessor(object):
         return text
 
     def _substitute_custom(self, text):
+        # merge consecutive capitalized words, but not if at the start
+        # of sentence
+        if self.merge_capitals:
+            text = re.sub(r'(?<![.!?]\s)([A-Z][\w$&%]*)\s+([A-Z][\w$&%]*)',
+                          r'\1_\2', text)
+
         # band chk chk chk, doing the best I can here, likely not perfect
         text = re.sub(r"""\s!!!([\s,.'"])""", r'chk_chk_chk\1', text)
 
         # any DJ followed by word that starts with capital letter,
-        # glue together (separator can be either a space or hyphen
+        # glue together (separator can be either a space or hyphen)
         text = re.sub(r'DJ[- ]([A-Z]+\w*)', r'DJ_\1', text)
 
         # DJ/rupture correction
@@ -163,6 +172,8 @@ class CustomTextPreprocessor(object):
 
     __call__ = preprocess
 
+
+# utility functions for pre-processing text
 
 def prepend_first_name(artist, text):
     artist_parts = artist.split()
@@ -248,8 +259,9 @@ def tokenize_and_save():
 
     stemmer = get_stemmer()
     stopset = get_stopset()
-    text_preprocessor = CustomTextPreprocessor('../data/subgenres.txt')
-    text_tokenizer = CustomTokenizer(stopset=stopset, stemmer=stemmer)
+    text_preprocessor = CustomTextPreprocessor(
+        subgenres_file='../data/subgenres.txt', merge_capitals=False)
+    text_tokenizer = CustomTokenizerWithPOS(stopset=stopset, stemmer=stemmer)
 
     for i, doc in enumerate(coll.find()):
         print(i)

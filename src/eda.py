@@ -159,17 +159,7 @@ def extended_tfidf(df):
 
     new_reviews = []
     for i, (artist, review) in enumerate(zip(artists, reviews)):
-        artist_parts = artist.split()
-        if len(artist_parts) == 2:
-            if re.match(r'\b(the|a|an)\b', artist_parts[0], re.IGNORECASE):
-                new_reviews.append(review)
-                continue
-            artist = artist.encode('utf-8')
-            review = review.encode('utf-8')
-            new_reviews.append(
-                textpre.prepend_first_name(artist, review).decode('utf-8'))
-        else:
-            new_reviews.append(review)
+        new_reviews.append(textpre.prepend_first_name(artist, review))
 
     reviews = new_reviews
     together = [abstracts, reviews, genres, artists, album]
@@ -183,37 +173,25 @@ def extended_tfidf(df):
     #    stopwords = f.readlines()
     #    stopwords = [stopword.strip() for stopword in stopwords]
 
-    stopwords = get_stop_words('en')
+    stopset = textpre.get_stopset()
+    porter = textpre.get_stemmer()
 
-    # get those contractions
-    stopwords.extend(nltk.word_tokenize(' '.join(stopwords)))
+    ctpre = textpre.CustomTextPreprocessor(
+        # subgenres_file='../data/subgenres.txt',
+        merge_capitals=True)
+    ctok = textpre.CustomTokenizer(stopset, porter)
 
-    # custom stop words
-    stopwords.extend(['lp', 'ep',
-                      'record', 'records',
-                      'label', 'labels',
-                      'release', 'releases', 'released',
-                      'listen', 'listens', 'listened', 'listener',
-                      'version', 'versions',
-                      'album', 'albums',
-                      'song', 'songs',
-                      'track', 'tracks',
-                      'sound', 'sounds',
-                      'thing', 'things', 'something',
-                      'music'])
-    stopset = set(stopwords)
-
-    porter = PorterStemmer()
     tfidf = TfidfVectorizer(stop_words=stopset,
-                            preprocessor=textpre.CustomTextPreprocessor(),
-                            tokenizer=textpre.CustomTokenizer(stopset, porter),
+                            preprocessor=ctpre, tokenizer=ctok,
                             max_df=0.5, min_df=5)
     tfidf_trans = tfidf.fit_transform(entries)
     return tfidf, tfidf_trans
 
 
 def extended_lsi(df):
+    print('Starting TfIdf')
     tfidf, tfidf_trans = extended_tfidf(df)
+    print('Starting SVD')
     svd = TruncatedSVD(n_components=200)
     svd_trans = svd.fit_transform(tfidf_trans)
 
