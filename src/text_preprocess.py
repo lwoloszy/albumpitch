@@ -28,6 +28,20 @@ class CustomTokenizer(object):
 
         words = nltk.word_tokenize(text)
 
+        # split on hyphens manually
+        words = [subword for word in words for subword in word.split('-')]
+
+        # remove stopwords/punctuation
+        words = filter(lambda x: (x.strip(string.punctuation) and
+                                  x not in self.stopset), words)
+
+        # strip punctuation and stem
+        words = [self.stemmer.stem(word.strip(string.punctuation).lower())
+                 for word in words]
+
+        return words
+
+    __call__ = tokenize
 
 
 class CustomTokenizerWithPOS(CustomTokenizer):
