@@ -138,7 +138,6 @@ class CustomTextPreprocessor(object):
         return text
 
     def preprocess(self, text):
-        #text = self._substitute_unicode(text)
         text = unidecode(text)
         text = self.normalize(text)
         return text
@@ -196,33 +195,6 @@ def discover_subgenres(all_text):
         for subgenre in subgenres:
             f.write('{:s} {:s}\n'.format(*subgenre))
         f.write('hip hop\n')
-
-
-def tokenize(text, stopset, stemmer):
-    # tokenize into sentences
-    sents = nltk.tokenize.sent_tokenize(text)
-
-    # tag with putative parts of speech
-    word_pos_tups_lst = [nltk.pos_tag(nltk.word_tokenize(sent))
-                         for sent in sents]
-
-    # merge consecutive proper nouns in hopes of identifying band names
-    words = [merge_proper_nouns(word_pos_tups)
-             for word_pos_tups in word_pos_tups_lst]
-
-    # unpack, lowercase and strip punctuation
-    words = [word.lower().strip(string.punctuation)
-             for sublist in words for word in sublist]
-
-    # split on hyphens and remove zero length strings and stopwords
-    words = [subword for word in words for subword in word.split('-')
-             if subword and subword not in stopset]
-
-    # strip punctuation and stem
-    words = [stemmer.stem(word.strip(string.punctuation))
-             for word in words]
-
-    return words
 
 
 def tokenize_and_save():
