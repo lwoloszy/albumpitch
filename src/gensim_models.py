@@ -1,7 +1,6 @@
 import logging
 from gensim import corpora, models, similarities
 import text_preprocess as textpre
-reload(textpre)
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.INFO)
@@ -57,8 +56,9 @@ def create_lsi(dictionary, corpus_tfidf, num_topics=200):
     return lsi, corpus_lsi
 
 
-def create_lda(dictionary, corpus):
-    lda = models.LdaModel(corpus, id2word=dictionary, num_topics=100)
+def create_lda(dictionary, corpus, num_topics=100, passes=1):
+    lda = models.LdaModel(corpus, id2word=dictionary,
+                          num_topics=100, passes=passes)
     corpus_lda = lda[corpus]
     return lda, corpus_lda
 
@@ -68,8 +68,8 @@ def get_indexed_sims(model, corpus):
     return index
 
 
-def get_most_similar(df, seed, dictionary, tfidf, lsi, index, n=10):
-    vec_bow = dictionary.doc2bow(df['tokenized_text'].iloc[seed])
+def get_most_similar(df, seed_num, dictionary, tfidf, lsi, index, n=10):
+    vec_bow = dictionary.doc2bow(df['tokenized_text'].iloc[seed_num])
     vec_tfidf = tfidf[vec_bow]
     vec_lsi = lsi[vec_tfidf]
     sims = index[vec_lsi]
@@ -82,8 +82,8 @@ def get_most_similar(df, seed, dictionary, tfidf, lsi, index, n=10):
     print df_temp[['url', 'genres', 'sim_scores']]
 
 
-def get_most_similar2(df, seed, dictionary, lda, index, n=10):
-    vec_bow = dictionary.doc2bow(df['tokenized_text'].iloc[seed])
+def get_most_similar2(df, seed_num, dictionary, lda, index, n=10):
+    vec_bow = dictionary.doc2bow(df['tokenized_text'].iloc[seed_num])
     vec_lda = lda[vec_bow]
     sims = index[vec_lda]
     sims = sorted(enumerate(sims), key=lambda item: -item[1])
