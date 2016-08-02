@@ -3,6 +3,9 @@ import re
 
 import pandas as pd
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 from pymongo import MongoClient
 
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -25,6 +28,9 @@ from nltk.stem.porter import PorterStemmer
 import text_preprocess as textpre
 import utility_funcs as uf
 reload(textpre)
+
+sns.set_style('ticks')
+
 
 
 def get_documents():
@@ -68,6 +74,40 @@ def append_genres(df):
 
     df['genre'] = uf.get_genres(df)
 
+
+def plot_albums_genre(df):
+    '''
+    Plot number of reviews for each music genre
+
+    Args:
+        df: dataframe with Pitchfork reviews
+    Returns:
+        None
+
+    '''
+
+    genres = df['genres'].tolist()
+    u_genres = np.unique([item for sublist in genres for item in sublist])
+    tuples_list = []
+    for u_genre in u_genres:
+        n_genre = np.sum(df['genres'].apply(lambda x: u_genre in x))
+        tuples_list.append((u_genre, n_genre))
+    n_unknown = np.sum(df['genres'].apply(lambda x: len(x)==0))
+    tuples_list.append(('Uncategorized', n_unknown))
+    df = pd.DataFrame(tuples_list, columns=['genre', 'count'])
+
+    plt.close('all')
+    color = sns.color_palette('Set1', 2)[1]
+    df_sorted = df.sort_values('count', ascending=False)
+    ax = sns.barplot(x='count', y='genre', data=df_sorted,
+                     color=color)
+    # ax.grid('on', alpha=0.5, linestyle='--')
+    ax.set_xlabel('# of reviews')
+    ax.set_ylabel('Genre')
+    sns.despine(offset=5, trim=True)
+    plt.tight_layout()
+
+    return df
 
 def naive_bayes_genre_cv(df):
     '''
