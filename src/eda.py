@@ -27,10 +27,21 @@ import utility_funcs as uf
 reload(textpre)
 
 
-def get_documents(collection='pitchfork_full'):
+def get_documents():
+    '''
+    Get Pitchfork album reviews from MongoDB
+
+    Args:
+        None
+    Returns:
+        Pandas DataFrame with album information, including
+        artists, album name, abstract, review, genres, labels,
+        and pitchfork url
+    '''
+
     client = MongoClient()
-    db = client['album_reviews']
-    coll = db[collection]
+    db = client['album']
+    coll = db['pitchfork']
 
     agg = coll.aggregate(
         [{'$project':
@@ -44,10 +55,33 @@ def get_documents(collection='pitchfork_full'):
 
 
 def append_genres(df):
+    '''
+    Append to a dataframe a genre column, where we
+    take the first genre from the genres list, if any
+
+    Args:
+        df: dataframe with Pitchfork reviews
+    Returns:
+        None
+
+    '''
+
     df['genre'] = uf.get_genres(df)
 
 
 def naive_bayes_genre_cv(df):
+    '''
+    Cross-validate a simple Multinomial Naive Bayes
+    classifier to see how well we can predict genre
+    tags from Pitchfork text reviews (sanity check)
+
+    Args:
+        df: dataframe with Pitchfork reviews
+    Returns:
+        cv_scores: cross-validation scores (accuracy)
+
+    '''
+
     X = df['review']
     y = df['genre']
 
@@ -61,6 +95,18 @@ def naive_bayes_genre_cv(df):
 
 
 def naive_bayes_genre_grid(df):
+    '''
+    Grid search a simple Multinomial Naive Bayes
+    classifier to see roughly which set of parameters
+    work well at classifying genres (playing around)
+
+    Args:
+        df: dataframe with Pitchfork reviews
+    Returns:
+        grid_search: fitted GridSearchCV object
+
+    '''
+
     X = df['review']
     y = df['genre']
 
@@ -82,7 +128,20 @@ def naive_bayes_genre_grid(df):
     return grid_search
 
 
-def get_important_words(df):
+def get_important_words(df, n_words):
+    '''
+    Fit a simple Multinomial Naive Bayes classifier to
+    Pitchfork reviews and print out words which reduce
+    most the entropy of genre distributions
+
+    Args:
+        df: dataframe with Pitchfork reviews
+        n_words: number of informative words to return
+    Returns:
+        words: list of informative words
+
+    '''
+
     X = df['review']
     y = df['genre']
 
@@ -92,12 +151,21 @@ def get_important_words(df):
     ])
 
     clf.fit(X, y)
-    return clf
+    return h_y_giv_x(clf.steps[0][1], clf.steps[1][1], n_words=n_words)
 
 
 def h_y_giv_x(cv, mnb, n_words=100):
     '''
-    Get most informative words, as quantified by entropy
+    Compute the entropy of genre distributions given the
+    presence of a word in a document
+
+    Args:
+        cv: sklearn fitted CountVectorizer
+        mnb: sklearn fitted MulinomialNB
+        n_words: number of most informative words to return
+    Returns:
+        words: list of informative words
+
     '''
     p_x_giv_y = np.exp(mnb.coef_)
     p_y = np.exp(mnb.intercept_)
@@ -113,38 +181,31 @@ def h_y_giv_x(cv, mnb, n_words=100):
     return words[np.argsort(entropy)[:n_words]]
 
 
-def information_gain(cv, mnb, n_words=100):
-    p_x_giv_y = np.exp(mnb.coef_)
-    p_y = np.exp(mnb.intercept_)[:, np.newaxis]
+def basic_lsi(df, n_components=200, max_df=0.5, min_df=5):
+    '''
+    Basic LSI model for album recommendations
 
-    p_x_and_y = p_x_giv_y * p_y[:, np.newaxis]
-    p_x = np.sum(p_x_and_y, axis=0)
+    Args:
+        df: dataframe with Pitchfork reviews
+        n_components: number of lsi dimensions
+        max_df: max_df in TfidfVectorizer
+        min_df: min_df in TfidfVectorizer
+    Returns:
+        tfidf: sklearn fitted TfidfVectorizer
+        tfidf_trans: sparse matrix with tfidf transformed data
+        svd: sklearn fitted TruncatedSVD
+        svd_trans: dense array with lsi transformed data
 
-    cond_ent_tmp = -p_x_giv_y*np.log2(p_x_giv_y) - \
-                   (1-p_x_giv_y)*np.log2(1-p_x_giv_y)
-    cond_ent = np.sum(cond_ent_tmp * p_y, axis=0)
-    marg_ent = -p_x*np.log2(p_x)-(1-p_x)*np.log2(1-p_x)
-    entropy = marg_ent - cond_ent
+    '''
 
-    words = np.array(cv.get_feature_names())
-    return words[np.argsort(entropy)[-n_words:]]
-
-
-def basic_lsi(df):
     X = df['review']
     stopwords = nltk.corpus.stopwords.words('english')
 
-    cv = CountVectorizer(stop_words='english', binary=True)
-    counts = cv.fit_transform(X)
-    probs = np.array(counts.mean(axis=0)).flatten()
-    add_stopwords = np.array(cv.get_feature_names())[np.where(probs > 0.5)[0]]
-
-    stopwords.extend(add_stopwords)
-
-    tfidf = TfidfVectorizer(stop_words=stopwords, max_df=0.7, min_df=0.01)
+    tfidf = TfidfVectorizer(stop_words=stopwords,
+                            max_df=max_df, min_df=min_df)
     tfidf_trans = tfidf.fit_transform(X)
 
-    svd = TruncatedSVD(n_components=100)
+    svd = TruncatedSVD(n_components=n_components)
     svd_trans = svd.fit_transform(tfidf_trans)
 
     return tfidf, tfidf_trans, svd, svd_trans
@@ -186,27 +247,28 @@ def extended_tfidf(df):
     return tfidf, tfidf_trans
 
 
-def extended_lsi(df):
+def extended_lsi(df, n_components=200):
     print('Starting TfIdf')
     tfidf, tfidf_trans = extended_tfidf(df)
+
     print('Starting SVD')
-    svd = TruncatedSVD(n_components=200)
+    svd = TruncatedSVD(n_components=n_components)
     svd_trans = svd.fit_transform(tfidf_trans)
 
     return tfidf, tfidf_trans, svd, svd_trans
 
 
-def basic_lda(df):
+def basic_lda(df, max_df=0.5, min_df=5):
     X = df['review']
-    tfidf = TfidfVectorizer(stop_words='english',
-                            min_df=5,
-                            max_df=0.5)
-    tfidf_trans = tfidf.fit_transform(X)
+    cv = CountVectorizer(stop_words='english',
+                         min_df=5,
+                         max_df=0.5)
+    cv_trans = cv.fit_transform(X)
 
-    lda = LatentDirichletAllocation(n_topics=100, max_iter=5)
-    lda_trans = lda.fit_transform(tfidf_trans)
+    lda = LatentDirichletAllocation(n_topics=200, max_iter=7)
+    lda_trans = lda.fit_transform(cv_trans)
 
-    return tfidf, tfidf_trans, lda, lda_trans
+    return cv, cv_trans, lda, lda_trans
 
 
 def extended_lda(df):
@@ -218,9 +280,17 @@ def extended_lda(df):
 
 
 def print_top_words(vectorizer, clf, class_labels, n=10):
-    """
+    '''
     Prints features with the highest coefficient values, per class
-    """
+
+    Args:
+        vectorizer: sklearn fitted CountVectorizer
+        clf: sklearn fitted MultinomialNB
+        class_labels: ordered list of class labels
+    Returns:
+        None
+
+    '''
     feature_names = vectorizer.get_feature_names()
     for i, class_label in enumerate(class_labels):
         top_n = np.argsort(clf.coef_[i])[-n:]
