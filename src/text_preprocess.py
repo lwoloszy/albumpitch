@@ -91,7 +91,7 @@ class CustomTextPreprocessor(object):
         genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues',
                   'rap', 'R&B', 'jazz', 'soul', 'classical', 'hip_hop',
                   'contemporary', 'funk', 'techno', 'wave', 'electro',
-                  'electronica', 'singer_songwriter)']
+                  'electronica?', 'experimental', 'singer_songwriter)']
         regex = re.compile(r'\b(\w{3,})[-/\s]' + '|'.join(genres))
         text = regex.sub(r'\1 \2 \1_\2', text)
 
