@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 sns.set_style('ticks')
 
 
-def get_similarities(df, svd_trans, func='raw', normalize=False, n=500):
+def get_similarities(df, svd_trans, func='raw', normalize=False, n=200):
     # for validation, use only tracks that have audio information
     # as scraped from spotify (and matched in pitchfork)
     df['has_audio_features'] = ~df['acoustic'].isnull()
@@ -38,15 +38,15 @@ def get_similarities(df, svd_trans, func='raw', normalize=False, n=500):
         if i % 100 == 0:
             print('Gone through {:d} albums'.format(i))
 
-        print(i)
-        df['lsi_sims'] = sim_vector
+        df.loc[:, 'lsi_sims'] = sim_vector
         cur_artists = artists_list[i-1]
         sel = np.zeros(df.shape[0])
         for artist in cur_artists:
             sel += df['artists_str'].str.contains(artist).values
-        sel = np.bool_(sel)
-        df['lsi_sims'][sel] = 0
+        sel = np.where(np.bool_(sel))[0]
+        df['lsi_sims'].iloc[sel] = 0
 
+        print(i)
         df_audiofeats = df[features_and_sims].sort_values('lsi_sims').iloc[-n:]
         other_features = np.float64(df_audiofeats[feature_names].values)
 
