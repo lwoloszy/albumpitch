@@ -32,7 +32,6 @@ reload(textpre)
 sns.set_style('ticks')
 
 
-
 def get_documents():
     '''
     Get Pitchfork album reviews from MongoDB
@@ -46,7 +45,7 @@ def get_documents():
     '''
 
     client = MongoClient()
-    db = client['album']
+    db = client['albumpitch']
     coll = db['pitchfork']
 
     agg = coll.aggregate(
@@ -92,7 +91,7 @@ def plot_albums_genre(df):
     for u_genre in u_genres:
         n_genre = np.sum(df['genres'].apply(lambda x: u_genre in x))
         tuples_list.append((u_genre, n_genre))
-    n_unknown = np.sum(df['genres'].apply(lambda x: len(x)==0))
+    n_unknown = np.sum(df['genres'].apply(lambda x: len(x) == 0))
     tuples_list.append(('Uncategorized', n_unknown))
     df = pd.DataFrame(tuples_list, columns=['genre', 'count'])
 
@@ -108,6 +107,7 @@ def plot_albums_genre(df):
     plt.tight_layout()
 
     return df
+
 
 def naive_bayes_genre_cv(df):
     '''
