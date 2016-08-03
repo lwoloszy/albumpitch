@@ -104,12 +104,13 @@ def insert_spotify_albums():
         for doc in coll.find():
             album_id = doc['id']
             album_name = doc['name']
+            album_link = doc['external_urls']['spotify']
             SQL = """
-            INSERT INTO spotify_albums (id, name)
-            VALUES (%s, %s)
+            INSERT INTO spotify_albums (id, name, link)
+            VALUES (%s, %s, %s)
             ON CONFLICT DO NOTHING;
             """
-            data = (album_id, album_name)
+            data = (album_id, album_name, album_link)
             cur.execute(SQL, data)
         conn.commit()
     finally:
@@ -179,7 +180,8 @@ def create_table_albums():
     DROP TABLE IF EXISTS spotify_albums CASCADE;
     CREATE TABLE spotify_albums (
         id varchar(255) NOT NULL primary key,
-        name varchar(255) NOT NULL);
+        name varchar(255) NOT NULL,
+        link varchar(255) NOT NULL);
     """)
     conn.commit()
     conn.close()
