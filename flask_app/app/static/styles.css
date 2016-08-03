@@ -1,0 +1,20 @@
+body {
+    background-color:#fafafa;
+    font-family: 'Merriweather', Georgia, serif;
+}
+
+.border {
+    border: 1px solid;
+}
+
+.top-buffer { margin-top: 25px; }
+
+.colorify {
+    background-image:url("http://ppcorn.com/us/wp-content/uploads/sites/14/2015/05/Psychedelic-Rock-PPcorn.jpg");
+}
+
+.vcenter {
+    display: inline-block;
+    vertical-align: middle;
+    float: none;
+}

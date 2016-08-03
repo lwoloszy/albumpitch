@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}AlbumPitch{% endblock %}
+
+{% block page_content %}
+<div class="page-header">
+  <h1><b>Welcome to AlbumPitch!</b></h1>
+</div>
+
+<div class="row">
+  <div class="col-sm-6">
+    <div class="form-group">
+      <div class="input-group">
+        <input type="text" class="form-control" id="aq" placeholder="Artist and Album">
+        <span class="input-group-btn">
+          <button type="submit" class="btn btn-primary">Pitch me an album! </button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6">
+    <div class="form-group">
+      <div class="input-group">
+        <input type="text" class="form-control" id="kq" placeholder="Keyword">
+        <span class="input-group-btn">
+          <button type="submit" class="btn btn-primary">Pitch me an album! </button>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  Here are 20 albums that AlbumPitch thinks are similar to:
+</div>
+
+<br><br><br>
+<div class="container border" style="margin: 20 20 20 20px">
+  <div class="row">
+    <div class="col-sm-1"><h4>Artwork</h4></div>
+    <div class="col-sm-2"><h4>Artist</h4></div>
+    <div class="col-sm-2"><h4>Album</h4></div>
+    <div class="col-sm-2"><h4>Similarity</h4></div>
+    <div class="col-sm-2"><h4>Spotify</h4></div>
+  </div>
+</div>
+
+
+<div class="container">
+  {% for album in album_list %}
+  <div class="row top-buffer">
+    <div class="col-sm-1">
+      <div>
+        <img src={{album.2}} class="img-responsive">
+      </div>
+    </div>
+    <div class="col-sm-2">
+      {{album.0}}
+    </div>
+    <div class="col-sm-2">
+      {{album.1}}
+    </div>
+    <div class="col-sm-2">
+      {{album.3}}
+    </div>
+    <div class="col-sm-2">
+      <a href={{album.4}} class="btn btn-success btn-sm"><span class="glyphicon glyphicon-music"></span>Spotify</a>
+    </div>
+  </div>
+  {% endfor %}
+
+</div>
+
+{% endblock %}
