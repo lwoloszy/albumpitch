@@ -86,6 +86,10 @@ def parse_pitchfork(html, parser='lxml'):
     out['abstract'] = article.find('div', {'class': 'abstract'}).text
     out['review'] = article.find('div', {'class': 'contents dropcap'}).text
 
+    # get album art link
+    img_link = soup.find('img').get('src')
+    out['album_art'] = img_link
+
     return out
 
 
