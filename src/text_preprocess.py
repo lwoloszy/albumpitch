@@ -291,4 +291,4 @@ def get_stemmer(name):
     if name == 'porter':
         return PorterStemmer()
     elif name == 'snowball':
-        return SnowballStemmer('english')
+        return SnowballStemmer('english').stemmer
