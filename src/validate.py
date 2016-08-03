@@ -6,12 +6,13 @@ from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
 from sklearn.preprocessing import StandardScaler
 
 import statsmodels.api as sm
+import scipy.stats as scp
 
 sns.set_style('ticks')
 
 
 def get_similarities(df, svd_trans, func='raw', normalize=False,
-                     restrict=False, n=200):
+                     restrict=False, n=250):
     # for validation, use only tracks that have audio information
     # as scraped from spotify (and matched in pitchfork)
     df['has_audio_features'] = ~df['acoustic'].isnull()
@@ -20,7 +21,7 @@ def get_similarities(df, svd_trans, func='raw', normalize=False,
                      'live', 'loud', 'speech', 'tempo', 'valence']
     features_and_sims = feature_names + ['lsi_sims']
 
-    valid_idx = np.where(df['has_audio_features'])[0][0:5000]
+    valid_idx = np.where(df['has_audio_features'])[0][0:2500]
     df = df.iloc[valid_idx]
     svd_trans = svd_trans[valid_idx]
     sims = cosine_similarity(svd_trans, svd_trans)
@@ -103,8 +104,8 @@ def plot_af_diffs(all_audio_diffs):
         temp = [seed[feature_name] for seed in all_audio_diffs]
         df = pd.concat(temp)
         df.index.name = 'recc_rank'
-        mean_diff = df.groupby(df.index).mean()[1:].values.flatten()
-        sem_diff = df.groupby(df.index).sem()[1:].values.flatten()
+        mean_diff = df.groupby(df.index).mean()[:].values.flatten()
+        sem_diff = df.groupby(df.index).sem()[:].values.flatten()
         ax = fig.add_subplot(3, 3, i+1)
         plot_indiv_diff(ax, mean_diff, sem_diff, feature_name, colors[i])
 
@@ -122,8 +123,8 @@ def plot_af_beta_dists(all_audio_diffs):
         betas = np.zeros(len(cur_feature))
         pvals = np.zeros(len(cur_feature))
         for j, seed_album in enumerate(cur_feature):
-            beta, pval = compute_regression(seed_album.index.values,
-                                            seed_album.values)
+            beta, pval = compute_regression(seed_album.index.values[1:],
+                                            seed_album.values[1:])
             betas[j], pvals[j] = beta, pval
         ax = fig.add_subplot(3, 3, i+1)
         plot_indiv_hist(ax, betas, pvals, feature_name, colors[i])
@@ -139,28 +140,35 @@ def plot_cos_sims(all_cos_sims):
     df = pd.concat([seed[feature_name] for seed in all_cos_sims])
     df.index.name = 'recc_rank'
 
-    mean_diff = df.groupby(df.index).mean()[1:].values.flatten()
-    sem_diff = df.groupby(df.index).sem()[1:].values.flatten()
+    mean_diff = df.groupby(df.index).mean().values.flatten()
+    sem_diff = df.groupby(df.index).sem().values.flatten()
     # return df.groupby(df.index).std()
 
-    plot_indiv_diff(ax, mean_diff, sem_diff, 'cosine similarity', 'k')
+    color = sns.color_palette('Set1', 2)[1]
+    plot_indiv_diff(ax, mean_diff, sem_diff, 'Cosine Distance', color)
 
-    inset_ax = fig.add_axes([.75, .5, .1, .3])
-    n = 500
+    inset_ax = fig.add_axes([.25, .6, .1, .3])
+    n = len(mean_diff)
     lh, rh = mean_diff[:n/2], mean_diff[n/2:n]
     m_lh, m_rh = np.mean(lh), np.mean(rh)
     sem_lh, sem_rh = np.std(lh)/np.sqrt(n/2), np.std(rh)/np.sqrt(n/2)
+
+    model = sm.OLS(df['sim_func'].values, sm.add_constant(df.index.values))
+    params = model.fit().params
+    ax.add_line(plt.Line2D(np.arange(n), np.arange(n)*params[1]+params[0],
+                           color='k', linestyle='--'))
 
     N = np.arange(2)
     width = 0.75
     inset_ax.bar(N, [m_lh, m_rh], width=width, yerr=[sem_lh, sem_rh])
     inset_ax.set_xticks(N + width/2.)
-    inset_ax.set_ylabel('cosine similarity')
+    inset_ax.set_ylabel('Cosine Distance')
 
     sns.despine(offset=5, trim=True)
 
     # gotta do this after despine
-    inset_ax.set_xticklabels(('Left half', 'Right half'),
+    inset_ax.set_xticklabels(('Ranks 1-{:d}'.format(n/2),
+                              'Ranks {:d}-{:d}'.format(n/2, n)),
                              horizontalalignment='right', rotation=45)
 
 
@@ -170,7 +178,7 @@ def plot_indiv_diff(ax, y, y_e, y_label, color):
     ax.fill_between(x, y-y_e, y+y_e, color=color, alpha=0.5)
     ax.set_xlabel('Recommendation rank')
     ax.set_ylabel(y_label)
-    ax.set_xlim(0, 500)
+    ax.set_xlim(0, len(y)+1)
     ax.set_ylim(np.min(y), np.max(y)*1.1)
 
 
@@ -186,7 +194,9 @@ def plot_indiv_hist(ax, vals, pvals, label, color='k', alpha=0.05, n_bins=20):
            color='none', edgecolor=color)
     ax.bar(edges[0:-1], height=counts_sig, width=bin_width,
            color=color, edgecolor=color)
-    ax.axvline(np.mean(vals), linestyle='--', color='k')
+    ax.axvline(0, linestyle='--', color='k')
+    ax.axvline(np.mean(vals), color='k')
+    print(scp.ttest_1samp(vals, 0))
 
 
 def plot_cosafs_vs_coslsi(all_lsi_sims, all_cos_sims, win_size=100):
@@ -197,11 +207,11 @@ def plot_cosafs_vs_coslsi(all_lsi_sims, all_cos_sims, win_size=100):
     df_cos = pd.concat([seed[feature_name][1:] for seed in all_cos_sims])
     df_lsi = pd.concat([seed[:][1:] for seed in all_lsi_sims])
 
-    x = df_lsi.values
+    x = df_lsi.values.flatten()
     y = df_cos.values.flatten()
 
     argsorted = np.argsort(x)[::-1]
-    x = x[argsorted]
+    x = 1-x[argsorted]
     y = y[argsorted]
     x = pd.rolling_mean(x, win_size)
     y = pd.rolling_mean(y, win_size)
@@ -209,9 +219,17 @@ def plot_cosafs_vs_coslsi(all_lsi_sims, all_cos_sims, win_size=100):
     ax.set_xlim(np.nanmin(x), np.nanmax(x))
     ax.set_ylim(np.nanmin(y), np.nanmax(y))
 
+    xmin, xmax = np.min(df_cos.values), np.max(df_cos.values)
+    model = sm.OLS(df_cos.values.flatten(),
+                   sm.add_constant(1-df_lsi.values.flatten()))
+    params = model.fit().params
+    ax.add_line(plt.Line2D(np.linspace(xmin, xmax, 100),
+                           np.linspace(xmin, xmax, 100)*params[1]+params[0],
+                           color='k', linestyle='--'))
+
     sns.despine(offset=5, trim=True)
-    ax.set_xlabel('LSI cosine similarity')
-    ax.set_ylabel('Spotify AF cosine similarity')
+    ax.set_xlabel('LSI cosine distance')
+    ax.set_ylabel('Spotify AudioFeatures cosine distance')
 
 
 def permutation_cosafs_vs_coslsi(all_lsi_sims, all_cos_sims, n_perm=1000):
