@@ -31,14 +31,17 @@ def insert_pitchfork_reviews():
             abstract = doc['abstract']
             review = doc['review']
 
+            album_art = doc['album_art']
+
             SQL = """
             INSERT INTO pitchfork (id, url, spotify_id, artist, album, genres,
-            pub_date, reviewers, labels, year, score, abstract, review)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            pub_date, reviewers, labels, year, score, abstract, review, album_art)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING;
             """
             data = (pid, url, spotify_id, artist, album, genres,
-                    pub_date, reviewers, labels, year, score, abstract, review)
+                    pub_date, reviewers, labels, year, score, abstract,
+                    review, album_art)
             cur.execute(SQL, data)
         conn.commit()
     finally:
