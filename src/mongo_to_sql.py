@@ -40,8 +40,8 @@ def insert_pitchfork_reviews():
             data = (pid, url, spotify_id, artist, album, genres,
                     pub_date, reviewers, labels, year, score, abstract, review)
             cur.execute(SQL, data)
-    finally:
         conn.commit()
+    finally:
         conn.close()
         client.close()
 
@@ -83,13 +83,13 @@ def insert_audio_features():
             data = (tid, album_id, acoustic, dance, energy, instrument, key,
                     liveness, loudness, mode, speechiness, tempo, ts, valence)
             cur.execute(SQL, data)
-    finally:
         conn.commit()
+    finally:
         conn.close()
         client.close()
 
 
-def insert_spotify_album():
+def insert_spotify_albums():
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
 
@@ -108,8 +108,8 @@ def insert_spotify_album():
             """
             data = (album_id, album_name)
             cur.execute(SQL, data)
-    finally:
         conn.commit()
+    finally:
         conn.close()
         client.close()
 
@@ -118,7 +118,8 @@ def create_table_pitchfork():
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS pitchfork (
+    DROP TABLE IF EXISTS pitchfork CASCADE;
+    CREATE TABLE pitchfork (
         id varchar(255) NOT NULL primary key,
         url varchar(255) NOT NULL,
         spotify_id varchar(255) default NULL REFERENCES spotify_albums (id),
@@ -133,6 +134,8 @@ def create_table_pitchfork():
         labels varchar(255) default NULL,
         year varchar(255) default NULL,
 
+        album_art varchar(255) default NULL,
+
         score int NOT NULL,
         abstract text default NULL,
         review text NOT NULL);
@@ -145,7 +148,8 @@ def create_table_audio_features():
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS spotify_audio_features (
+    DROP TABLE IF EXISTS spotify_audio_features CASCADE;
+    CREATE TABLE spotify_audio_features (
         id varchar(255) NOT NULL primary key,
         album_id varchar(255) NOT NULL REFERENCES spotify_albums (id),
         acousticness real default NULL,
@@ -169,9 +173,25 @@ def create_table_albums():
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS spotify_albums (
+    DROP TABLE IF EXISTS spotify_albums CASCADE;
+    CREATE TABLE spotify_albums (
         id varchar(255) NOT NULL primary key,
         name varchar(255) NOT NULL);
     """)
     conn.commit()
     conn.close()
+
+
+if __name__ == '__main__':
+    create_table_albums()
+    print('Created table spotify_albums')
+    create_table_audio_features()
+    print('Created table spotify_audio_features')
+    create_table_pitchfork()
+    print('Created table pitchfork')
+    insert_spotify_albums()
+    print('Inserted into spotify_albums')
+    insert_audio_features()
+    print('Inserted into spotify_audio_features')
+    insert_pitchfork_reviews()
+    print('Inserted into pitchfork')
