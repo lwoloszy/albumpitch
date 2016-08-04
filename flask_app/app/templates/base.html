@@ -8,8 +8,8 @@
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static', filename='styles.css') }}">
 <link href="http://fonts.googleapis.com/css?family=Merriweather:600" rel="stylesheet" type="text/css"/>
+<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Karla">
 <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Josefin+Slab">
-<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Manteka">
 <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='typeahead.css')}}">
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
@@ -20,7 +20,7 @@
 
 {% block navbar %}
 <div class="navbar navbar-inverse" role="navigation">
-    <div class="container">
+    <div class="container header-txt">
         <div class="navbar-header">
             <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
                 <span class="sr-only">Toggle navigation</span>

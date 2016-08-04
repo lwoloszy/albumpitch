@@ -3,37 +3,39 @@
 {% block title %}AlbumPitch{% endblock %}
 
 {% block page_content %}
-<div class="page-header">
+<div class="page-header header-txt">
   <h1><b>Welcome to AlbumPitch!</b></h1>
+
+  <div class="row">
+    <div class="col-sm-6 pad">
+      <form class="form-horizontal" role="form">
+        <div class="form-group">
+          <div class="input-group">
+            <input type="text" class="form-control" id="album-query" name="album-query" placeholder="Artist and Album">
+            <span class="input-group-btn">
+              <button type="submit" id="submit" value="album-query" class="btn btn-primary">Pitch me an album! </button>
+            </span>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="col-sm-6 pad">
+      <form class="form-horizontal" role="form">
+        <div class="form-group">
+          <div class="input-group">
+            <input type="text" class="form-control" id="keyword-query" placeholder="Keyword">
+            <span class="input-group-btn">
+              <button type="submit" class="btn btn-primary">Pitch me an album! </button>
+            </span>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
-<div class="row">
-  <div class="col-sm-6 pad">
-    <form class="form-horizontal" role="form">
-      <div class="form-group">
-        <div class="input-group">
-          <input type="text" class="form-control" id="album-query" name="album-query" placeholder="Artist and Album">
-          <span class="input-group-btn">
-            <button type="submit" id="submit" value="album-query" class="btn btn-primary">Pitch me an album! </button>
-          </span>
-        </div>
-      </div>
-    </form>
-  </div>
 
-  <div class="col-sm-6 pad">
-    <form class="form-horizontal" role="form">
-      <div class="form-group">
-        <div class="input-group">
-          <input type="text" class="form-control" id="keyword-query" placeholder="Keyword">
-          <span class="input-group-btn">
-            <button type="submit" class="btn btn-primary">Pitch me an album! </button>
-          </span>
-        </div>
-      </div>
-    </form>
-  </div>
-</div>
 
 
 <script type=text/javascript>
@@ -59,11 +61,21 @@
     limit: Infinity
   }
 );
-</script>
+   </script>
 
-<div class="container">
-  Here are 30 albums that AlbumPitch thinks you might enjoy given your interest in
+
+{% if seed_album %}
+<div class="container header-txt">
+  <h4>
+    <div class="row" style="text-align:center">
+      <p>Here are some albums that AlbumPitch thinks you might enjoy if you liked...</p>
+      <p> <b>{{seed_album}}</b> </p>
+    </div>
+  </h4>
 </div>
+{% else %}
+<img src="{{url_for('static', filename='barnett_background.jpg')}}" class="img-responsive" width=100% style="max-height: 500px">
+{% endif %}
 
 <div class="container">
   {% for album_row in album_list %}

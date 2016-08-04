@@ -1,6 +1,14 @@
+.page-header {
+    padding-bottom: 10px;
+    margin-top: -10px;
+}
+
+.header-txt {
+     font-family: 'Merriweather', serif;
+}
+
 body {
-    background-color:#fafafa;
-    font-family: 'Merriweather', Georgia, serif;
+    font-family: 'Karla', sans-serif;
 }
 
 .img-container {position: relative;}
@@ -13,44 +21,39 @@ body {
 .top-buffer { margin-top: 50px; margin-bottom: 50px;}
 
 .pad {
-    padding: 0 20px;
+    padding: 10px 20px;
 }
 
 
 .artist-name {
     text-align: center;
-    font-family: Manteka;
     font-size: 17px;
     font-weight: 900;
-    margin-top: 15px;
-    margin-bottom: 15px;
+    padding-top: 10px;
+    padding-bottom: 5px;
 }
 
 .album-name {
     text-align: center;
     font-size: 16px;
-    font-family: 'Josefin Slab', serif;
+    font-family: 'Josefin Slab', sans-serif;
     font-weight: 900;
     font-style: italic;
-    margin-top: 15px;
-    margin-bottom: 15px;
+    padding-bottom: 10px;
 }
 
 .similarity {
     text-align: center;
     font-size: 14px;
     font-weight: 600;
-    margin-top: 15px;
-    margin-bottom: 15px;
+    padding-top: 2px;
 }
 
 .genre {
     text-align: center;
     text-transform: uppercase;
     font-size: 14px;
-    font-weight: 500;
-    margin-top: 15px;
-    margin-bottom: 15px;
+    font-weight: 900;
 
 }
 

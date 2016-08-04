@@ -15,16 +15,22 @@ def index():
     album_query = request.args.get('album-query', '')
 
     if not album_query:
-        return render_template('index.html', album_list=[])
+        return render_template('index.html', seed_album=None, album_list=[])
 
     print album_query
-    sql_query = text(
-        """SELECT DISTINCT url, artist, album FROM pitchfork
-        WHERE concat_ws(': ', artist, album) ilike '%{:s}%'
-        """
-        .format(album_query))
+    cmd = """
+    SELECT DISTINCT url, artist, album FROM pitchfork
+    WHERE concat_ws(': ', artist, album) ilike :album_query
+    """
+    cur = db.engine.execute(text(cmd), album_query=album_query)
 
-    cur = db.engine.execute(sql_query)
+    #sql_query = text(
+    #    """SELECT DISTINCT url, artist, album FROM pitchfork
+    #    WHERE concat_ws(': ', artist, album) ilike '%{:s}%'
+    #    """
+    #    .format(album_query))
+
+    #cur = db.engine.execute(sql_query)
     results = cur.fetchall()
     if len(results) != 1:
         return render_template('index.html', album_list=[])
@@ -58,7 +64,8 @@ def index():
         results = cur.fetchall()
 
     album_list = [results[i:i+n_col] for i in xrange(0, len(results), n_col)]
-    return render_template('index.html', album_list=album_list)
+    return render_template('index.html',
+                           seed_album=album_query, album_list=album_list)
 
 
 @main.route('/_typeahead')
