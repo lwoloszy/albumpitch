@@ -20,7 +20,7 @@ class CustomTokenizer(object):
             self.stopset = set()
 
         if stemmer:
-            self.stemmer = stemmer.stem
+            self.stemmer = stemmer
         else:
             self.stemmer = lambda x: x
 
@@ -31,7 +31,8 @@ class CustomTokenizer(object):
         words = [subword.lower() for word in words for subword in word.split('-')]
 
         # strip punctuation, remove stopwords and stem
-        words = [self.stemmer(word.strip(string.punctuation)) for word in words
+        words = [self.stemmer.stem(word.strip(string.punctuation))
+                 for word in words
                  if word not in self.stopset and word.strip(string.punctuation)]
 
         return words
