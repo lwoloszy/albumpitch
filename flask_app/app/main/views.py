@@ -63,6 +63,7 @@ def index():
 
 @main.route('/_typeahead')
 def typeahead():
+    max_results = 20
     partial = request.args.get('q')
     sql_query = text(
         """SELECT DISTINCT artist, album FROM pitchfork
@@ -71,4 +72,4 @@ def typeahead():
         .format(partial))
     cur = db.engine.execute(sql_query)
     results = [': '.join(result[0:2]) for result in cur.fetchall()]
-    return jsonify(matching_results=results)
+    return jsonify(matching_results=results[:max_results])
