@@ -139,7 +139,7 @@ def coregister_albums():
 
     db = client['albumpitch']
     coll_pitchfork = db['pitchfork']
-    coll_spotify_albums = ['spotify_albums']
+    coll_spotify_albums = db['spotify_albums']
 
     out1 = []
     out2 = []
@@ -215,9 +215,8 @@ def coregister_albums():
 
 def determine_best_match(pitch_album, spotify_albums):
     # try to see which album matches closest
-    u_single_quotes = ur"['\u2018\u2019\u0060\u00b4]"
     pitchfork_name = pitch_album['album']
-    pitchfork_name = re.sub(u_single_quotes, "'", pitchfork_name)
+    pitchfork_name = unidecode(pitchfork_name)
     pitchfork_name = pitchfork_name.lower().strip()
     if pitchfork_name.split()[-1] == 'ep':
         pitchfork_name = ' '.join(pitchfork_name.split()[0:-1])
@@ -225,19 +224,21 @@ def determine_best_match(pitch_album, spotify_albums):
     pitchfork_name = re.sub(r'&', 'and', pitchfork_name)
     pitchfork_name = ''.join(c for c in pitchfork_name if c.isalnum())
 
+    a_artist = unidecode(' '.join(pitch_album['artists']).lower().strip())
+    a_artist = ''.join(c for c in a_artist if c.isalnum())
+
     for album in spotify_albums:
-        a_name = album['name'].lower().strip()
+        a_name = unidecode(album['name'].lower().strip())
         if a_name.split()[-1] == 'ep':
             a_name = ' '.join(a_name.split()[0:-1])
-        a_artist = ' '.join(pitch_album['artists']).lower().strip()
 
         a_name = re.sub(r'&', 'and', a_name)
         a_name = ''.join(c for c in a_name if c.isalnum())
-        a_artist = ''.join(c for c in a_artist if c.isalnum())
 
         special_words = ['(from', 'special', 'version', 'expanded', 'bonus',
                          'deluxe', 'explicit', 'extended', 'anniversary',
-                         'remaster', 'reissue)']
+                         'remaster', 'reissue', 'release', 'complete',
+                         'edition)']
         regex = re.compile('|'.join(special_words))
 
         # doing the best i can here
