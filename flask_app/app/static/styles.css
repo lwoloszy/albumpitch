@@ -3,14 +3,59 @@ body {
     font-family: 'Merriweather', Georgia, serif;
 }
 
-.border {
-    border: 1px solid;
+.img-container {position: relative;}
+.img-container .link {
+    position: absolute;
+    top: -10px;
+    left: -10px;
 }
 
-.top-buffer { margin-top: 25px; }
+.top-buffer { margin-top: 50px; margin-bottom: 50px;}
 
-.colorify {
-    background-image:url("http://ppcorn.com/us/wp-content/uploads/sites/14/2015/05/Psychedelic-Rock-PPcorn.jpg");
+.pad {
+    padding: 0 20px;
+}
+
+
+.artist-name {
+    text-align: center;
+    font-family: Manteka;
+    font-size: 17px;
+    font-weight: 900;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.album-name {
+    text-align: center;
+    font-size: 16px;
+    font-family: 'Josefin Slab', serif;
+    font-weight: 900;
+    font-style: italic;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.similarity {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.genre {
+    text-align: center;
+    text-transform: uppercase;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 15px;
+    margin-bottom: 15px;
+
+}
+
+.spotify {
+    margin: auto;
 }
 
 .vcenter {

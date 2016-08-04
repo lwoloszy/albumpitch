@@ -8,68 +8,93 @@
 </div>
 
 <div class="row">
-  <div class="col-sm-6">
-    <div class="form-group">
-      <div class="input-group">
-        <input type="text" class="form-control" id="aq" placeholder="Artist and Album">
-        <span class="input-group-btn">
-          <button type="submit" class="btn btn-primary">Pitch me an album! </button>
-        </span>
+  <div class="col-sm-6 pad">
+    <form class="form-horizontal" role="form">
+      <div class="form-group">
+        <div class="input-group">
+          <input type="text" class="form-control" id="album-query" name="album-query" placeholder="Artist and Album">
+          <span class="input-group-btn">
+            <button type="submit" id="submit" value="album-query" class="btn btn-primary">Pitch me an album! </button>
+          </span>
+        </div>
       </div>
-    </div>
+    </form>
   </div>
 
-  <div class="col-sm-6">
-    <div class="form-group">
-      <div class="input-group">
-        <input type="text" class="form-control" id="kq" placeholder="Keyword">
-        <span class="input-group-btn">
-          <button type="submit" class="btn btn-primary">Pitch me an album! </button>
-        </span>
+  <div class="col-sm-6 pad">
+    <form class="form-horizontal" role="form">
+      <div class="form-group">
+        <div class="input-group">
+          <input type="text" class="form-control" id="keyword-query" placeholder="Keyword">
+          <span class="input-group-btn">
+            <button type="submit" class="btn btn-primary">Pitch me an album! </button>
+          </span>
+        </div>
       </div>
-    </div>
+    </form>
   </div>
 </div>
+
+
+<script type=text/javascript>
+
+  $('#album-query').typeahead(
+  {
+    hint: true,
+    highlight: true,
+    minLength: 1,
+  },
+  {
+    name: 'data',
+    source: function(query, sync, async)
+    {
+      $.getJSON($SCRIPT_ROOT + '/_typeahead',
+                {
+                  q: query,
+                }, function(data) {
+                  async(data.matching_results);
+                }
+               );
+    },
+    limit: 10
+  }
+);
+</script>
 
 <div class="container">
   Here are 20 albums that AlbumPitch thinks are similar to:
 </div>
 
-<br><br><br>
-<div class="container border" style="margin: 20 20 20 20px">
-  <div class="row">
-    <div class="col-sm-1"><h4>Artwork</h4></div>
-    <div class="col-sm-2"><h4>Artist</h4></div>
-    <div class="col-sm-2"><h4>Album</h4></div>
-    <div class="col-sm-2"><h4>Similarity</h4></div>
-    <div class="col-sm-2"><h4>Spotify</h4></div>
-  </div>
-</div>
-
-
 <div class="container">
-  {% for album in album_list %}
-  <div class="row top-buffer">
-    <div class="col-sm-1">
-      <div>
-        <img src={{album.2}} class="img-responsive">
+  {% for album_row in album_list %}
+  <div class = "row row-eq-height top-buffer">
+    {% for album in album_row %}
+    <div class="col-sm-3">
+      <div class="img-container">
+        <img src={{album.1}} class="img-responsive" width=100%>
+        {% if album.6 %}
+        <a href={{album.6}} class="btn btn-success btn-sm link"><span class="glyphicon glyphicon-music"></span>Listen</a>
+        {% else %}
+        <a href class="btn btn-default btn-sm link" disabled><span class="glyphicon glyphicon-remove-circle"></span>Listen</a>
+        {% endif %}
+      </div>
+
+      <div class="artist-name">
+        {{album.2}}
+      </div>
+      <div class="album-name">
+        {{album.3}}
+      </div>
+      <div class="genre">
+        {{album.4}}
+      </div>
+      <div class="similarity">
+        {{album.5}}
       </div>
     </div>
-    <div class="col-sm-2">
-      {{album.0}}
+    {% endfor %}
     </div>
-    <div class="col-sm-2">
-      {{album.1}}
-    </div>
-    <div class="col-sm-2">
-      {{album.3}}
-    </div>
-    <div class="col-sm-2">
-      <a href={{album.4}} class="btn btn-success btn-sm"><span class="glyphicon glyphicon-music"></span>Spotify</a>
-    </div>
-  </div>
   {% endfor %}
-
 </div>
 
 {% endblock %}

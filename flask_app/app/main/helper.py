@@ -1,69 +1,27 @@
 import os
-import json
 import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from sqlalchemy import text
+from .. import db
+
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 
-def get_zipcode_shapes():
-    f = open(os.path.join(basedir, 'data/zipcodes.json'))
-    json_data = json.load(f)
-    f.close()
+def gen_recc(pitchfork_url, n_recc=30):
+    print(basedir)
+    urls = np.load(basedir+'/models/urls.npy')
+    lsi = np.load(basedir+'/models/lsi.npy')
 
-    data = {}
-    for i, feature in enumerate(json_data['features']):
-        zipcode = int(feature['properties']['ZCTA5CE10'])
-        coords = feature['geometry']['coordinates']
-        data[zipcode] = {}
-        data[zipcode]['coords'] = coords
-        data[zipcode]['type'] = feature['geometry']['type']
-    return data
+    idx = np.where(urls == pitchfork_url)[0][0]
+    cos_sims = cosine_similarity(lsi[idx, :].reshape(1, -1), lsi).flatten()
+    closest_idx = np.argsort(cos_sims)[-n_recc-1:-1][::-1]
+    return urls[closest_idx], cos_sims[closest_idx]
 
 
-def get_boro_shapes():
-    f = open(os.path.join(basedir, 'data/boroughs_noclip.json'))
-    json_data = json.load(f)
-    f.close()
-
-    data = {}
-    for i, feature in enumerate(json_data['features']):
-        boro = feature['properties']['BoroName']
-        coords = feature['geometry']['coordinates']
-        data[boro] = {}
-        data[boro]['coords'] = coords
-        data[boro]['type'] = feature['geometry']['type']
-    return data
-
-
-def arrange_polygons(shape_dict, ks):
-    all_xs = []
-    all_ys = []
-    for k in ks:
-        if shape_dict[k]['type'] == 'MultiPolygon':
-            xs = np.array([])
-            ys = np.array([])
-            for polygon in shape_dict[k]['coords']:
-                xs = np.append(xs, np.concatenate(
-                    [np.array(polygon[0])[:, 0], [np.nan]]))
-                ys = np.append(ys, np.concatenate(
-                    [np.array(polygon[0])[:, 1], [np.nan]]))
-        elif shape_dict[k]['type'] == 'Polygon':
-            # this does not take into account patches with holes,
-            # we're assuming no holes
-            xs = np.array(shape_dict[k]['coords'][0])[:, 0]
-            ys = np.array(shape_dict[k]['coords'][0])[:, 1]
-
-        all_xs.append(xs)
-        all_ys.append(ys)
-    return all_xs, all_ys
-
-
-def to_web_mercator(x_long, y_lat):
-    semimajorAxis = 6378137.0  # WGS84 spheroid semimajor axis
-    east = x_long * 0.017453292519943295
-    north = y_lat * 0.017453292519943295
-
-    northing = 3189068.5 * np.log((1.0 + np.sin(north)) / (1.0 - np.sin(north)))
-    easting = semimajorAxis * east
-
-    return easting, northing
+def get_20_albums():
+    #sql_query = text("""SELECT * FROM pitchfork WHERE url="{:s}";
+    #""".format(aq))
+    sql_query = text("SELECT artist, album, album_art FROM pitchfork LIMIT 24;")
+    cur = db.engine.execute(sql_query)
+    return cur.fetchall()

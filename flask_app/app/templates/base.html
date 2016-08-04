@@ -7,8 +7,14 @@
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static', filename='styles.css') }}">
-<link href="http://fonts.googleapis.com/css?family=Merriweather:300" rel="stylesheet" type="text/css"/>
-<link href="http://fonts.googleapis.com/css?family=Source+Code+Pro:200,400,700" rel="stylesheet" type="text/css"/>
+<link href="http://fonts.googleapis.com/css?family=Merriweather:600" rel="stylesheet" type="text/css"/>
+<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Josefin+Slab">
+<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Manteka">
+<link rel="stylesheet" type="text/css" href="{{url_for('static', filename='typeahead.css')}}">
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+<script type=text/javascript src="{{
+  url_for('static', filename='typeahead.js') }}"></script>
 
 {% endblock %}
 
@@ -49,4 +55,7 @@
 {% block scripts %}
 {{ super() }}
 {{ moment.include_moment() }}
+<script type=text/javascript>
+  $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+</script>
 {% endblock %}
