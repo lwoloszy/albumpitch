@@ -30,6 +30,7 @@ import utility_funcs as uf
 reload(textpre)
 
 sns.set_style('ticks')
+sns.set_context('talk')
 
 
 def get_documents():
@@ -40,7 +41,7 @@ def get_documents():
         None
     Returns:
         Pandas DataFrame with album information, including
-        artists, album name, abstract, review, genres, labels,
+        artists, album name, abstract, review, genres, labels, reviewer
         and pitchfork url
     '''
 
@@ -51,7 +52,8 @@ def get_documents():
     agg = coll.aggregate(
         [{'$project':
           {'_id': 0, 'abstract': 1, 'album': 1, 'artists': 1,
-           'review': 1, 'genres': 1, 'labels': 1, 'url': 1}}])
+           'review': 1, 'genres': 1, 'labels': 1, 'reviewers': 1,
+           'url': 1}}])
     client.close()
 
     agg = list(agg)
@@ -106,7 +108,66 @@ def plot_albums_genre(df):
     sns.despine(offset=5, trim=True)
     plt.tight_layout()
 
-    return df
+
+def plot_albums_reviewer(df):
+    '''
+    Plot number of reviews for each reviewer
+
+    Args:
+        df: dataframe with Pitchfork reviews
+    Returns:
+        None
+
+    '''
+
+    plt.close('all')
+
+    # only ever one reviewer per album
+    df['reviewer'] = df['reviewers'].apply(lambda x: x[0].strip())
+    df_counts = df.groupby('reviewer').count()[['album']]
+    df_counts.rename(columns={'album': 'count'}, inplace=True)
+    df_counts.sort_values('count', ascending=False, inplace=True)
+    vals = df_counts['count']
+
+    color = sns.color_palette('Set1')[0]
+    plt.plot(np.arange(1, len(vals)+1), vals, color=color)
+    plt.semilogy()
+
+    sns.despine(offset=5, trim=True)
+    plt.xlabel('Reviewer rank')
+    plt.ylabel('# of reviews')
+    plt.tight_layout()
+
+
+def plot_review_length(df):
+    '''
+    Plot distribution of article lengths
+
+    Args:
+        df: dataframe with Pitchfork reviews
+    Returns:
+        None
+
+    '''
+
+    plt.close('all')
+
+    df['length'] = df['review'].apply(lambda x: len(re.split('\s', x)))
+    vals = df['length']
+
+    n_bins = 50
+    bin_edges = np.linspace(np.min(vals), np.max(vals), n_bins)
+    bin_width = np.diff(bin_edges)[0]
+    counts, edges = np.histogram(vals, bin_edges)
+    color = sns.color_palette('Set1', 9)[2]
+    plt.bar(edges[0:-1], height=counts, width=bin_width,
+            color=color, edgecolor='white')
+
+    plt.xlabel('# of words in review')
+    plt.ylabel('# of reviews')
+    plt.xlim(0, 2500)
+    sns.despine(offset=5, trim=True)
+    plt.tight_layout()
 
 
 def naive_bayes_genre_cv(df):

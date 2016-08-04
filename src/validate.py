@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.transforms as transforms
+from matplotlib.ticker import NullFormatter
 from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
 from sklearn.preprocessing import StandardScaler
 
@@ -9,6 +11,21 @@ import statsmodels.api as sm
 import scipy.stats as scp
 
 sns.set_style('ticks')
+sns.set_context('talk')
+
+FEATURE_NAMES = ['acoustic', 'dance', 'energy', 'instrument',
+                 'live', 'loud', 'speech', 'tempo', 'valence']
+LABEL_DICT = {'acoustic': 'Acousticness',
+              'dance': 'Danceability',
+              'energy': 'Energy',
+              'instrument': 'Instrumentalness',
+              'live': 'Liveness',
+              'loud': 'Loudness',
+              'speech': 'Speechiness',
+              'tempo': 'Tempo',
+              'valence': 'Valence'
+}
+
 
 
 def get_similarities(df, svd_trans, func='raw', normalize=False,
@@ -17,21 +34,21 @@ def get_similarities(df, svd_trans, func='raw', normalize=False,
     # as scraped from spotify (and matched in pitchfork)
     df['has_audio_features'] = ~df['acoustic'].isnull()
 
-    feature_names = ['acoustic', 'dance', 'energy', 'instrument',
+    FEATURE_NAMES = ['acoustic', 'dance', 'energy', 'instrument',
                      'live', 'loud', 'speech', 'tempo', 'valence']
-    features_and_sims = feature_names + ['lsi_sims']
+    features_and_sims = FEATURE_NAMES + ['lsi_sims']
 
-    valid_idx = np.where(df['has_audio_features'])[0][0:2500]
+    valid_idx = np.where(df['has_audio_features'])[0]
     df = df.iloc[valid_idx]
     svd_trans = svd_trans[valid_idx]
     sims = cosine_similarity(svd_trans, svd_trans)
 
     if normalize:
         ss = StandardScaler()
-        ss.fit(np.float64(df[feature_names].values))
-        df[feature_names] = ss.transform(df[feature_names])
+        ss.fit(np.float64(df[FEATURE_NAMES].values))
+        df[FEATURE_NAMES] = ss.transform(df[FEATURE_NAMES])
 
-    features = np.float64(df[feature_names].values)
+    features = np.float64(df[FEATURE_NAMES].values)
     all_audio_diffs = []
     all_lsi_sims = []
 
@@ -74,13 +91,13 @@ def get_similarities(df, svd_trans, func='raw', normalize=False,
 
         # print(i)
         df_audiofeats = df[features_and_sims].sort_values('lsi_sims').iloc[-n:]
-        other_features = np.float64(df_audiofeats[feature_names].values)
+        other_features = np.float64(df_audiofeats[FEATURE_NAMES].values)
 
         if not hasattr(func, '__call__'):
             feature_diffs = np.sqrt((other_features - seed_features)**2)
             all_audio_diffs.append(
                 pd.DataFrame(feature_diffs[::-1],
-                             columns=feature_names).reset_index(drop=True))
+                             columns=FEATURE_NAMES).reset_index(drop=True))
         else:
             all_audio_diffs.append(
                 pd.DataFrame(
@@ -97,28 +114,33 @@ def get_similarities(df, svd_trans, func='raw', normalize=False,
 def plot_af_diffs(all_audio_diffs):
     plt.close('all')
     fig = plt.figure()
-    feature_names = ['acoustic', 'dance', 'energy', 'instrument',
-                     'live', 'loud', 'speech', 'tempo', 'valence']
     colors = sns.color_palette('Set1', 10)
-    for i, feature_name in enumerate(feature_names):
+    for i, feature_name in enumerate(FEATURE_NAMES):
         temp = [seed[feature_name] for seed in all_audio_diffs]
         df = pd.concat(temp)
         df.index.name = 'recc_rank'
         mean_diff = df.groupby(df.index).mean()[:].values.flatten()
         sem_diff = df.groupby(df.index).sem()[:].values.flatten()
         ax = fig.add_subplot(3, 3, i+1)
-        plot_indiv_diff(ax, mean_diff, sem_diff, feature_name, colors[i])
+        plot_indiv_diff(ax, mean_diff, sem_diff, LABEL_DICT[feature_name], colors[i])
+        if i != 6:
+            #ax.xaxis.set_major_formatter(NullFormatter())
+            #ax.yaxis.set_major_formatter(NullFormatter())
+            pass
+        else:
+            ax.set_xlabel('Recommendation rank')
+            #ax.set_ylabel('# of instances')
+
 
     sns.despine(offset=5, trim=True)
+    plt.tight_layout()
 
 
 def plot_af_beta_dists(all_audio_diffs):
     plt.close('all')
     fig = plt.figure()
-    feature_names = ['acoustic', 'dance', 'energy', 'instrument',
-                     'live', 'loud', 'speech', 'tempo', 'valence']
     colors = sns.color_palette('Set1', 10)
-    for i, feature_name in enumerate(feature_names):
+    for i, feature_name in enumerate(FEATURE_NAMES):
         cur_feature = [seed[feature_name] for seed in all_audio_diffs]
         betas = np.zeros(len(cur_feature))
         pvals = np.zeros(len(cur_feature))
@@ -127,7 +149,19 @@ def plot_af_beta_dists(all_audio_diffs):
                                             seed_album.values[1:])
             betas[j], pvals[j] = beta, pval
         ax = fig.add_subplot(3, 3, i+1)
-        plot_indiv_hist(ax, betas, pvals, feature_name, colors[i])
+        plot_indiv_hist(ax, betas, pvals, LABEL_DICT[feature_name], colors[i],
+                        mn=-.004, mx=.004, n_bins=40)
+        ax.set_xlim(-.004, .004)
+        ax.set_xticks(np.arange(-.004, .0041, .002))
+        ax.set_ylim(0, 2500)
+        ax.set_yticks(np.arange(0, 2501, 500))
+        if i != 6:
+            #ax.xaxis.set_major_formatter(NullFormatter())
+            #ax.yaxis.set_major_formatter(NullFormatter())
+            pass
+        else:
+            ax.set_xlabel(r"$\beta_1$")
+            ax.set_ylabel('# of instances')
 
     sns.despine(offset=5, trim=True)
 
@@ -176,15 +210,18 @@ def plot_indiv_diff(ax, y, y_e, y_label, color):
     x = np.arange(len(y))
     ax.add_line(plt.Line2D(x, y, color=color))
     ax.fill_between(x, y-y_e, y+y_e, color=color, alpha=0.5)
-    ax.set_xlabel('Recommendation rank')
+    #ax.set_xlabel('Recommendation rank')
     ax.set_ylabel(y_label)
     ax.set_xlim(0, len(y)+1)
     ax.set_ylim(np.min(y), np.max(y)*1.1)
 
 
-def plot_indiv_hist(ax, vals, pvals, label, color='k', alpha=0.05, n_bins=20):
-    mn = np.min(vals)
-    mx = np.max(vals)
+def plot_indiv_hist(ax, vals, pvals, label, color='k', alpha=0.05,
+                    mn=None, mx=None, n_bins=20):
+    if not mn:
+        mn = np.min(vals)
+    if not mx:
+        mx = np.max(vals)
     bin_edges = np.linspace(mn, mx, n_bins)
     bin_width = np.diff(bin_edges)[0]
     counts_sig, edges = np.histogram(vals[pvals < alpha], bin_edges)
@@ -194,8 +231,20 @@ def plot_indiv_hist(ax, vals, pvals, label, color='k', alpha=0.05, n_bins=20):
            color='none', edgecolor=color)
     ax.bar(edges[0:-1], height=counts_sig, width=bin_width,
            color=color, edgecolor=color)
-    ax.axvline(0, linestyle='--', color='k')
-    ax.axvline(np.mean(vals), color='k')
+    ax.axvline(0, linestyle='--', color='k', linewidth=0.75)
+
+    trans = transforms.blended_transform_factory(
+        ax.transData, ax.transAxes)
+    ax.annotate("", xy=(np.mean(vals), 0.9), xycoords=trans,
+                xytext=(np.mean(vals), 1.0),
+                ha='center', va='center', color='k',
+                arrowprops=dict(arrowstyle="-|>",
+                                facecolor='k', edgecolor='k',
+                                linewidth=1))
+    ax.text(0, 0.8, label, transform=ax.transAxes, fontsize=12,
+            horizontalalignment='left')
+
+    #ax.axvline(np.mean(vals), color='k')
     print(scp.ttest_1samp(vals, 0))
 
 
