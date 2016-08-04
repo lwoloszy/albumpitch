@@ -3,6 +3,7 @@ from __future__ import print_function
 import re
 import json
 import time
+from unidecode import unidecode
 
 import pymongo
 from pymongo import MongoClient
@@ -49,14 +50,22 @@ def get_track_features(
         if i % 50 == 0:
             print('Got audio features for {:d} albums'.format(i))
 
-        artist = ' '.join(doc['artists']).encode('utf-8')
-        album = doc['album'].encode('utf-8')
+        artist = ' '.join(doc['artists'])
+        album = doc['album']
 
         # spotify doesn't like the EP ending so remove it
         if album.split()[-1] == 'EP':
             album = ' '.join(album.split()[0:-1])
 
-        query = 'artist:{:s} album:{:s}'.format(artist, album)
+        album = re.sub(':', '', album)
+        artist = re.sub(':', '', artist)
+        try:
+            artist = unidecode(artist)
+            album = unidecode(album)
+            query = 'artist:{:s} album:{:s}'.format(artist, album)
+        except:
+            print("Can't decode {:s}".format(query))
+            continue
 
         for j in xrange(max_retries):
             try:
@@ -68,12 +77,12 @@ def get_track_features(
                 time.sleep(5)
                 continue
         else:
-            with open('logs/unable_to_search_album', 'a') as f:
+            with open('../logs/unable_to_search_album', 'a') as f:
                 f.write(doc['url']+'\n')
             continue
 
         if not len(result['albums']['items']):
-            with open('logs/query_not_in_spotify_catalog_noep', 'a') as f:
+            with open('../logs/query_not_in_spotify_catalog_noep', 'a') as f:
                 f.write(doc['url']+'\n')
             continue
 
