@@ -24,7 +24,7 @@ SVD = None
 @main.route('/', methods=['GET'])
 def index():
     n_col = 4
-    n_recc = 24
+    n_recc = 200
     album_query = request.args.get('album-query', '')
     keyword_query = request.args.get('keyword-query', '')
 
@@ -62,11 +62,11 @@ def index():
         db.engine.execute(sql_query)
 
     sql_query = text("""
-    SELECT p.url, p.album_art, p.artist, p.album, p.genres, sim, sa.link
+    SELECT p.url, p.album_art, p.artist, p.album, p.genres, round(sim::numeric, 3), sa.link
     FROM sorted s JOIN pitchfork p on s.url = p.url
     LEFT JOIN spotify_albums sa ON p.spotify_id = sa.id
     ORDER BY sim DESC
-    LIMIT 24;
+    LIMIT 48;
     """)
 
     cur = db.engine.execute(sql_query)
@@ -107,6 +107,7 @@ def gen_recc_aq(pitchfork_url, n_recc=30):
     idx = np.where(URLS == pitchfork_url)[0][0]
     cos_sims = cosine_similarity(
         SVD_TRANS[idx, :].reshape(1, -1), SVD_TRANS).flatten()
+    # don't get same album, so skip last one
     closest_idx = np.argsort(cos_sims)[-n_recc-1:-1][::-1]
     return URLS[closest_idx], cos_sims[closest_idx]
 
@@ -115,7 +116,7 @@ def gen_recc_kq(kq, n_recc=30):
     kq_tfidf = TFIDF.transform([kq])
     kq_lsi = LSI.transform(kq_tfidf)
     cos_sims = cosine_similarity(kq_lsi.reshape(1, -1), SVD_TRANS).flatten()
-    closest_idx = np.argsort(cos_sims)[-n_recc-1:-1][::-1]
+    closest_idx = np.argsort(cos_sims)[-n_recc:][::-1]
     return URLS[closest_idx], cos_sims[closest_idx]
 
 

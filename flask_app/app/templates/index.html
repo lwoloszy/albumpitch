@@ -63,7 +63,7 @@
 
 
 {% if seed_album %}
-<div class="container header-txt">
+<div class="container-fluid header-txt">
   <h4>
     <div class="row" style="text-align:center">
       <p>Here are some albums that AlbumPitch thinks you might enjoy if you liked...</p>
@@ -92,10 +92,16 @@
       <div class="img-container">
         <img src={{album.1}} class="img-responsive" width=100%>
         {% if album.6 %}
-        <a href={{album.6}} class="btn btn-success btn-sm link"><span class="glyphicon glyphicon-music"></span>Listen</a>
+        <a href={{album.6}} class="btn btn-success btn-sm link-left"><span class="glyphicon glyphicon-music"></span>Listen</a>
         {% else %}
-        <a href class="btn btn-default btn-sm link" disabled><span class="glyphicon glyphicon-remove-circle"></span>Listen</a>
+        <a href class="btn btn-default btn-sm link-left" disabled><span class="glyphicon glyphicon-remove-circle"></span>Listen</a>
         {% endif %}
+
+        <div class="circle similarity2 link-right">
+          {{album.5}}
+        </div>
+
+
       </div>
 
       <div class="artist-name">
@@ -106,9 +112,6 @@
       </div>
       <div class="genre">
         {{album.4}}
-      </div>
-      <div class="similarity">
-        {{album.5}}
       </div>
     </div>
     {% endfor %}
