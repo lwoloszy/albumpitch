@@ -1,11 +1,24 @@
+import os
+import sys
 from flask import render_template, session, redirect, url_for, current_app
 from flask import request
 from flask import jsonify
 from sqlalchemy import text
+
+import dill
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+
 from .. import db
 from . import main
 
-import helper
+import text_preprocess
+sys.modules['text_preprocess'] = text_preprocess
+
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+TFIDF = None
+SVD = None
 
 
 @main.route('/', methods=['GET'])
@@ -13,29 +26,25 @@ def index():
     n_col = 4
     n_recc = 24
     album_query = request.args.get('album-query', '')
+    keyword_query = request.args.get('keyword-query', '')
 
-    if not album_query:
+    if not album_query and not keyword_query:
         return render_template('index.html', seed_album=None, album_list=[])
 
-    print album_query
-    cmd = """
-    SELECT DISTINCT url, artist, album FROM pitchfork
-    WHERE concat_ws(': ', artist, album) ilike :album_query
-    """
-    cur = db.engine.execute(text(cmd), album_query=album_query)
+    if album_query:
+        cmd = """
+        SELECT DISTINCT url, artist, album FROM pitchfork
+        WHERE concat_ws(': ', artist, album) ilike :album_query
+        """
+        cur = db.engine.execute(text(cmd), album_query=album_query)
+        results = cur.fetchall()
 
-    #sql_query = text(
-    #    """SELECT DISTINCT url, artist, album FROM pitchfork
-    #    WHERE concat_ws(': ', artist, album) ilike '%{:s}%'
-    #    """
-    #    .format(album_query))
+        if len(results) != 1:
+            return render_template('index.html', album_list=[])
 
-    #cur = db.engine.execute(sql_query)
-    results = cur.fetchall()
-    if len(results) != 1:
-        return render_template('index.html', album_list=[])
-
-    urls, sims = helper.gen_recc(results[0][0], n_recc)
+        urls, sims = gen_recc_aq(results[0][0], n_recc)
+    elif keyword_query:
+        urls, sims = gen_recc_kq(keyword_query, n_recc)
 
     sql_query = text("""
     DROP TABLE IF EXISTS sorted;
@@ -52,20 +61,23 @@ def index():
         """.format(url, sim))
         db.engine.execute(sql_query)
 
-        sql_query = text("""
-        SELECT p.url, p.album_art, p.artist, p.album, p.genres, sim, sa.link
-        FROM sorted s JOIN pitchfork p on s.url = p.url
-        LEFT JOIN spotify_albums sa ON p.spotify_id = sa.id
-        ORDER BY sim DESC
-        LIMIT 24;
-        """)
+    sql_query = text("""
+    SELECT p.url, p.album_art, p.artist, p.album, p.genres, sim, sa.link
+    FROM sorted s JOIN pitchfork p on s.url = p.url
+    LEFT JOIN spotify_albums sa ON p.spotify_id = sa.id
+    ORDER BY sim DESC
+    LIMIT 24;
+    """)
 
-        cur = db.engine.execute(sql_query)
-        results = cur.fetchall()
+    cur = db.engine.execute(sql_query)
+    results = cur.fetchall()
 
-    album_list = [results[i:i+n_col] for i in xrange(0, len(results), n_col)]
+    album_list = [results[i:i+n_col]
+                  for i in xrange(0, len(results), n_col)]
+
     return render_template('index.html',
-                           seed_album=album_query, album_list=album_list)
+                           seed_album=album_query, seed_word=keyword_query,
+                           album_list=album_list)
 
 
 @main.route('/_typeahead')
@@ -80,3 +92,34 @@ def typeahead():
     cur = db.engine.execute(sql_query)
     results = [': '.join(result[0:2]) for result in cur.fetchall()]
     return jsonify(matching_results=results[:max_results])
+
+
+@main.before_app_first_request
+def load_global_data():
+    global URLS, TFIDF, LSI, SVD_TRANS
+    URLS = np.load(basedir+'/models/urls.npy')
+    TFIDF = load_dill(basedir+'/models/tfidf.pkl')
+    LSI = load_dill(basedir+'/models/svd.pkl')
+    SVD_TRANS = np.load(basedir+'/models/svd_trans.npy')
+
+
+def gen_recc_aq(pitchfork_url, n_recc=30):
+    idx = np.where(URLS == pitchfork_url)[0][0]
+    cos_sims = cosine_similarity(
+        SVD_TRANS[idx, :].reshape(1, -1), SVD_TRANS).flatten()
+    closest_idx = np.argsort(cos_sims)[-n_recc-1:-1][::-1]
+    return URLS[closest_idx], cos_sims[closest_idx]
+
+
+def gen_recc_kq(kq, n_recc=30):
+    kq_tfidf = TFIDF.transform([kq])
+    kq_lsi = LSI.transform(kq_tfidf)
+    cos_sims = cosine_similarity(kq_lsi.reshape(1, -1), SVD_TRANS).flatten()
+    closest_idx = np.argsort(cos_sims)[-n_recc-1:-1][::-1]
+    return URLS[closest_idx], cos_sims[closest_idx]
+
+
+def load_dill(filename):
+    with open(filename) as f:
+        out = dill.loads(f.read())
+    return out

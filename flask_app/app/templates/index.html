@@ -3,6 +3,7 @@
 {% block title %}AlbumPitch{% endblock %}
 
 {% block page_content %}
+
 <div class="page-header header-txt">
   <h1><b>Welcome to AlbumPitch!</b></h1>
 
@@ -24,7 +25,7 @@
       <form class="form-horizontal" role="form">
         <div class="form-group">
           <div class="input-group">
-            <input type="text" class="form-control" id="keyword-query" placeholder="Keyword">
+            <input type="text" class="form-control" id="keyword-query" name="keyword-query" placeholder="Keyword">
             <span class="input-group-btn">
               <button type="submit" class="btn btn-primary">Pitch me an album! </button>
             </span>
@@ -34,9 +35,6 @@
     </div>
   </div>
 </div>
-
-
-
 
 <script type=text/javascript>
 
@@ -73,13 +71,22 @@
     </div>
   </h4>
 </div>
+{% elif seed_word %}
+<div class="container header-txt">
+  <h4>
+    <div class="row" style="text-align:center">
+      <p>Here are some albums that AlbumPitch thinks are similar to the phrase...</p>
+      <p> <b>{{seed_word}}</b> </p>
+    </div>
+  </h4>
+</div>
 {% else %}
 <img src="{{url_for('static', filename='barnett_background.jpg')}}" class="img-responsive" width=100% style="max-height: 500px">
 {% endif %}
 
 <div class="container">
   {% for album_row in album_list %}
-  <div class = "row row-eq-height top-buffer">
+  <div class = "row row-eq-height top-buffer" style="background-color:white">
     {% for album in album_row %}
     <div class="col-sm-3">
       <div class="img-container">
