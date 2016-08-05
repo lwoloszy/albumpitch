@@ -344,7 +344,7 @@ def extended_tfidf(df):
 
     tfidf = TfidfVectorizer(stop_words=stopset,
                             preprocessor=ctpre, tokenizer=ctok,
-                            max_df=0.5, min_df=5)
+                            max_df=0.75, min_df=5)
     tfidf_trans = tfidf.fit_transform(entries)
     return tfidf, tfidf_trans
 

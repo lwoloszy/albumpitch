@@ -1,10 +1,13 @@
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.ticker import NullFormatter
 import seaborn as sns
 
 from sklearn.cross_validation import train_test_split
 from sklearn.manifold import MDS
 from sklearn.metrics.pairwise import cosine_distances
+from sklearn.cluster import KMeans, MiniBatchKMeans
 
 sns.set_style('ticks')
 
@@ -35,13 +38,118 @@ def plot_embedding(embedding, labels):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     colors = sns.color_palette('Set1', len(np.unique(labels)))
-    for i, label in enumerate(np.sort(np.unique(labels))):
+    for i, label in enumerate(np.sort(np.unique(labels))[::-1]):
         cur_X = embedding[labels == label]
         ax.add_line(plt.Line2D(cur_X[:, 0], cur_X[:, 1], color=colors[i],
                                linestyle='none', marker='o', alpha=0.75))
-    ax.set_xlim(1.1*np.min(embedding[:, 0], 1.1*np.max(embedding[:, 0])))
-    ax.set_ylim(1.1*np.min(embedding[:, 1], 1.1*np.max(embedding[:, 1])))
+    #ax.set_xlim(1.1*np.min(embedding[:, 0], 1.1*np.max(embedding[:, 0])))
+    #ax.set_ylim(1.1*np.min(embedding[:, 1], 1.1*np.max(embedding[:, 1])))
+    ax.set_xlim(-1.51, 1.51)
+    ax.set_ylim(-1.51, 1.51)
     sns.despine(offset=5, trim=True)
     ax.set_xlabel('MDS dim 1')
     ax.set_ylabel('MDS dim 2')
     ax.legend(np.sort(np.unique(labels)))
+
+
+def show_lsi(tfidf, svd, svd_trans, df,
+             n_comp=10, n_words=10, n_docs=10):
+    components = svd.components_
+    words = np.array(tfidf.get_feature_names())
+    fig = plt.figure(figsize=(10, 8))
+
+    for i, component in enumerate(components[0:n_comp], 1):
+        sorted_idx = np.argsort(component)
+        print('Component #{:d}'.format(i))
+        print('-'*20)
+        print('\nMost negative words:')
+        print('\n\t'+'\n\t'.join(words[sorted_idx[:n_words]]))
+        print('\nMost positive words:')
+        print('\n\t'+'\n\t'.join(words[sorted_idx[-n_words:]]))
+
+        # Make a figure and axes with dimensions as desired.
+        ax = fig.add_subplot(2, 5, i)
+
+        # Set the colormap and norm to correspond to the data for which
+        # the colorbar will be used.
+        cmap = plt.cm.Spectral_r
+        mn = np.min(component)
+        mx = np.max(component)
+        norm = mpl.colors.Normalize(mn, mx)
+
+        cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap,
+                                       norm=norm,
+                                       orientation='vertical')
+        # sorted_component = np.sort(component)
+        colors = sns.color_palette('Spectral_r', 9).as_hex()
+        colors = np.r_[np.repeat(colors[0], n_words),
+                       np.repeat(colors[-1], n_words)]
+
+        # cb.set_ticks(np.c_[
+        #    sorted_component[0:n_words],
+        #    sorted_component[-n_words:]].flatten())
+        cb.set_ticks(np.linspace(mn, mx, n_words*2))
+        cb.ax.tick_params(labelsize=10)
+        for color, tick in zip(colors, cb.ax.get_yticklabels()):
+            tick.set_color(color)
+            tick.set_fontsize(14)
+        cb.set_ticklabels(np.r_[
+            words[sorted_idx[:n_words]],
+            words[sorted_idx[-n_words:]]].flatten())
+
+    plt.tight_layout()
+
+
+def find_k(tfidf, svd_trans, k_range):
+    scores = []
+    for k in np.arange:
+        km = KMeans(n_clusters=k, init='k-means++', max_iter=100, n_init=1,
+                    verbose=2)
+        km.fit(svd_trans)
+        scores.append(-1*km.score(svd_trans))
+    plt.plot(k_range, scores)
+    plt.xlabel('# of clusters')
+    plt.ylabel('Inertia')
+    sns.despine(offset=5, trim=True)
+    return k_range, scores
+
+
+def kmeans(tfidf, svd, svd_trans, k=200, n_words=10):
+    km = KMeans(n_clusters=200, init='k-means++', max_iter=100, n_init=5,
+                verbose=2)
+    km.fit(svd_trans)
+
+    original_space_centroids = svd.inverse_transform(km.cluster_centers_)
+    order_centroids = original_space_centroids.argsort()[:, ::-1]
+
+    terms = tfidf.get_feature_names()
+    fig = plt.figure(figsize=(10, 8))
+    for i in range(10):
+        print("Cluster {:d}:".format(i))
+        for ind in order_centroids[i, :n_words]:
+            print(' {:s}'.format(terms[ind]))
+        print('\n')
+
+        # Make a figure and axes with dimensions as desired.
+        ax = fig.add_subplot(2, 5, i+1)
+
+        component = order_centroids[i]
+        cmap = plt.cm.Purples
+        mn = np.min(component[:n_words])
+        mx = np.max(component[:n_words])
+        norm = mpl.colors.Normalize(mn, mx)
+
+        cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm,
+                                       orientation='vertical')
+        # sorted_component = np.sort(component)
+        colors = sns.color_palette('Purples', 9).as_hex()
+        colors = np.repeat(colors[-1], n_words)
+
+        cb.set_ticks(np.linspace(mn, mx, n_words))
+        cb.ax.tick_params(labelsize=10)
+        for color, tick in zip(colors, cb.ax.get_yticklabels()):
+            tick.set_color(color)
+            tick.set_fontsize(14)
+        cb.set_ticklabels(np.array(terms)[order_centroids[i, :n_words][::-1]])
+    #plt.tight_layout()
+    return km
