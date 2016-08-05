@@ -17,8 +17,10 @@ sys.modules['text_preprocess'] = text_preprocess
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
+URLS = None
 TFIDF = None
-SVD = None
+LSI = None
+SVD_TRANS = None
 
 
 @main.route('/', methods=['GET'])
@@ -98,8 +100,8 @@ def typeahead():
 def load_global_data():
     global URLS, TFIDF, LSI, SVD_TRANS
     URLS = np.load(basedir+'/models/urls.npy')
-    TFIDF = load_dill(basedir+'/models/tfidf.pkl')
-    LSI = load_dill(basedir+'/models/svd.pkl')
+    TFIDF = load_dill(basedir+'/models/tfidf.dill')
+    LSI = load_dill(basedir+'/models/svd.dill')
     SVD_TRANS = np.load(basedir+'/models/svd_trans.npy')
 
 
@@ -113,6 +115,7 @@ def gen_recc_aq(pitchfork_url, n_recc=30):
 
 
 def gen_recc_kq(kq, n_recc=30):
+    q = TFIDF.get_feature_names()
     kq_tfidf = TFIDF.transform([kq])
     kq_lsi = LSI.transform(kq_tfidf)
     cos_sims = cosine_similarity(kq_lsi.reshape(1, -1), SVD_TRANS).flatten()
