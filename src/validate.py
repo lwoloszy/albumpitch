@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy import optimize
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 from matplotlib.ticker import NullFormatter
@@ -177,33 +178,33 @@ def plot_cos_sims(all_cos_sims):
     mean_diff = df.groupby(df.index).mean().values.flatten()
     sem_diff = df.groupby(df.index).sem().values.flatten()
     # return df.groupby(df.index).std()
-
     color = sns.color_palette('Set1', 2)[1]
-    plot_indiv_diff(ax, mean_diff, sem_diff, 'Cosine Distance', color)
+    plot_indiv_diff(ax, mean_diff, sem_diff, 'Cosine Distance', 'k')
 
-    inset_ax = fig.add_axes([.25, .6, .1, .3])
+    # inset_ax = fig.add_axes([.25, .6, .1, .3])
     n = len(mean_diff)
-    lh, rh = mean_diff[:n/2], mean_diff[n/2:n]
-    m_lh, m_rh = np.mean(lh), np.mean(rh)
-    sem_lh, sem_rh = np.std(lh)/np.sqrt(n/2), np.std(rh)/np.sqrt(n/2)
+    # lh, rh = mean_diff[:n/2], mean_diff[n/2:n]
+    # m_lh, m_rh = np.mean(lh), np.mean(rh)
+    # sem_lh, sem_rh = np.std(lh)/np.sqrt(n/2), np.std(rh)/np.sqrt(n/2)
 
     model = sm.OLS(df['sim_func'].values, sm.add_constant(df.index.values))
     params = model.fit().params
     ax.add_line(plt.Line2D(np.arange(n), np.arange(n)*params[1]+params[0],
-                           color='k', linestyle='--'))
+                           color=color, linestyle='--'))
+    ax.set_xlabel('Recommendation rank')
 
-    N = np.arange(2)
-    width = 0.75
-    inset_ax.bar(N, [m_lh, m_rh], width=width, yerr=[sem_lh, sem_rh])
-    inset_ax.set_xticks(N + width/2.)
-    inset_ax.set_ylabel('Cosine Distance')
+    # N = np.arange(2)
+    # width = 0.75
+    # inset_ax.bar(N, [m_lh, m_rh], width=width, yerr=[sem_lh, sem_rh])
+    # inset_ax.set_xticks(N + width/2.)
+    # inset_ax.set_ylabel('Cosine Distance')
 
     sns.despine(offset=5, trim=True)
 
     # gotta do this after despine
-    inset_ax.set_xticklabels(('Ranks 1-{:d}'.format(n/2),
-                              'Ranks {:d}-{:d}'.format(n/2, n)),
-                             horizontalalignment='right', rotation=45)
+    # inset_ax.set_xticklabels(('Ranks 1-{:d}'.format(n/2),
+    #                          'Ranks {:d}-{:d}'.format(n/2, n)),
+    #                         horizontalalignment='right', rotation=45)
 
 
 def plot_indiv_diff(ax, y, y_e, y_label, color):
