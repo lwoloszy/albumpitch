@@ -315,10 +315,10 @@ def basic_lsi(df, n_components=200, max_df=0.5, min_df=5):
 def extended_tfidf(df):
     abstracts = df['abstract'].tolist()
     reviews = df['review'].tolist()
-    genres = df['genres'].map(lambda x: ', '.join(x)).tolist()
-    artists = df['artists'].map(lambda x: ', '.join(x)).tolist()
+    genres = df['genres'].map(lambda x: ' '.join(x)).tolist()
+    artists = df['artists'].map(lambda x: ' '.join(x)).tolist()
     albums = df['album'].tolist()
-    labels = df['labels'].map(lambda x: ', '.join(x)).tolist()
+    labels = df['labels'].map(lambda x: ' '.join(x)).tolist()
 
     new_reviews = []
     for i, (artist, review) in enumerate(zip(artists, reviews)):
@@ -326,7 +326,7 @@ def extended_tfidf(df):
 
     reviews = new_reviews
     together = [abstracts, reviews, genres, artists, albums, labels]
-    entries = [', '.join(entry) for entry in zip(*together)]
+    entries = [' '.join(entry) for entry in zip(*together)]
 
     # r = requests.get('http://fs1.position2.com/bm/txt/stopwords.txt')
     # stopwords = r.content.split('\n')
