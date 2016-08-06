@@ -6,32 +6,33 @@
 
 <div class="page-header header-txt">
   <h1><b>Welcome to AlbumPitch!</b></h1>
-
-  <div class="row">
-    <div class="col-sm-6 pad">
-      <form class="form-horizontal" role="form">
-        <div class="form-group">
-          <div class="input-group">
-            <input type="text" class="form-control" id="album-query" name="album-query" placeholder="Artist and Album">
-            <span class="input-group-btn">
-              <button type="submit" id="submit" value="album-query" class="btn btn-primary">Pitch me an album! </button>
-            </span>
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-6 pad">
+        <form class="form-horizontal" role="form">
+          <div class="form-group">
+            <div class="input-group">
+              <input type="text" class="form-control" id="album-query" name="album-query" placeholder="Artist and Album">
+              <span class="input-group-btn">
+                <button type="submit" id="submit" value="album-query" class="btn btn-primary">Pitch me an album! </button>
+              </span>
+            </div>
           </div>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
 
-    <div class="col-sm-6 pad">
-      <form class="form-horizontal" role="form">
-        <div class="form-group">
-          <div class="input-group">
-            <input type="text" class="form-control" id="keyword-query" name="keyword-query" placeholder="Keyword">
-            <span class="input-group-btn">
-              <button type="submit" class="btn btn-primary">Pitch me an album! </button>
-            </span>
+      <div class="col-sm-6 pad">
+        <form class="form-horizontal" role="form">
+          <div class="form-group">
+            <div class="input-group">
+              <input type="text" class="form-control" id="keyword-query" name="keyword-query" placeholder="Keyword">
+              <span class="input-group-btn">
+                <button type="submit" class="btn btn-primary">Pitch me an album! </button>
+              </span>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   </div>
 </div>
@@ -65,34 +66,32 @@
 {% if seed_album %}
 <div class="container-fluid header-txt">
   <h4>
-    <div class="row" style="text-align:center">
+    <div class="row top-buffer" style="text-align:center">
       <p>Here are some albums that AlbumPitch thinks you might enjoy if you liked...</p>
-      <p> <b>{{seed_album}}</b> </p>
+      <b>{{seed_album}}</b>
     </div>
   </h4>
 </div>
 {% elif seed_word %}
-<div class="container header-txt">
-  <h4>
-    <div class="row" style="text-align:center">
-      <p>Here are some albums that AlbumPitch thinks are similar to the phrase...</p>
-      <p> <b>{{seed_word}}</b> </p>
-    </div>
-  </h4>
+<div class="container-fluid header-txt">
+  <div class="row top-buffer" style="text-align:center">
+    Here are some albums that AlbumPitch thinks are similar to the phrase...
+    <b>{{seed_word}}</b>
+  </div>
 </div>
 {% else %}
 <img src="{{url_for('static', filename='barnett_background.jpg')}}" class="img-responsive" width=100% style="max-height: 500px">
 {% endif %}
 
-<div class="container">
+<div class="container-fluid col-xs-12 col-sm-12">
   {% for album_row in album_list %}
-  <div class = "row row-eq-height top-buffer" style="background-color:white">
+  <div class = "row" style="background-color:white">
     {% for album in album_row %}
-    <div class="col-sm-3">
+    <div class="col-xs-6 col-sm-3">
       <div class="img-container">
-        <img src={{album.1}} class="img-responsive" width=100%>
+        <img src={{album.1}} class="img-responsive" width=100% height:auto>
         {% if album.6 %}
-        <a href={{album.6}} class="btn btn-success btn-sm link-left"><span class="glyphicon glyphicon-music"></span>Listen</a>
+        <a onclick="window.open('{{album.6}}')" class="btn btn-success btn-sm link-left"><span class="glyphicon glyphicon-music"></span>Listen</a>
         {% else %}
         <a href class="btn btn-default btn-sm link-left" disabled><span class="glyphicon glyphicon-remove-circle"></span>Listen</a>
         {% endif %}
