@@ -1,18 +1,27 @@
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.ticker import NullFormatter
 import seaborn as sns
 
 from sklearn.cross_validation import train_test_split
 from sklearn.manifold import MDS
 from sklearn.metrics.pairwise import cosine_distances
-from sklearn.cluster import KMeans, MiniBatchKMeans
+from sklearn.cluster import KMeans
 
 sns.set_style('ticks')
 
 
 def plot_lsi(svd_trans, genres):
+    '''
+    Plots a set of documents in the LSI space
+
+    Args:
+        svd_trans: dense array with svd transformed data
+        genres: list of genres for each entry in svd_trans
+    Returns:
+        None
+    '''
+
     genres = np.array(genres)
     genre_sel = np.not_equal(genres, None)
     X, y = svd_trans[genre_sel], genres[genre_sel]
@@ -20,6 +29,16 @@ def plot_lsi(svd_trans, genres):
 
 
 def plot_mds(points, genres, n_points=500):
+    '''
+    Plots a set of documents in MDS space
+
+    Args:
+        points: dense array with coordinates of each document
+        genres: list of genres for each entry in points
+    Returns:
+        None
+    '''
+
     genres = np.array(genres)
     genre_sel = np.not_equal(genres, None)
     X, y = points[genre_sel], genres[genre_sel]
@@ -35,6 +54,10 @@ def plot_mds(points, genres, n_points=500):
 
 
 def plot_embedding(embedding, labels):
+    '''
+    Utility function that actually does the plotting
+    '''
+
     fig = plt.figure()
     ax = fig.add_subplot(111)
     colors = sns.color_palette('Set1', len(np.unique(labels)))
@@ -52,8 +75,21 @@ def plot_embedding(embedding, labels):
     ax.legend(np.sort(np.unique(labels)))
 
 
-def show_lsi(tfidf, svd, svd_trans, df,
-             n_comp=10, n_words=10, n_docs=10):
+def show_lsi(tfidf, svd, svd_trans,
+             n_comp=10, n_words=10):
+    '''
+    Shows the individual words that make up each svd component
+
+    Args:
+        tfidf: sklearn fitted TfidfVectorizer
+        svd: sklearn fitted TruncatedSVD
+        svd_trans: dense array with lsi transformed data
+        n_comp: number of components to show
+        n_words: number of words for each component to show
+    Returns:
+        None
+    '''
+
     components = svd.components_
     words = np.array(tfidf.get_feature_names())
     fig = plt.figure(figsize=(10, 8))
@@ -80,14 +116,10 @@ def show_lsi(tfidf, svd, svd_trans, df,
         cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap,
                                        norm=norm,
                                        orientation='vertical')
-        # sorted_component = np.sort(component)
         colors = sns.color_palette('Spectral_r', 9).as_hex()
         colors = np.r_[np.repeat(colors[0], n_words),
                        np.repeat(colors[-1], n_words)]
 
-        # cb.set_ticks(np.c_[
-        #    sorted_component[0:n_words],
-        #    sorted_component[-n_words:]].flatten())
         cb.set_ticks(np.linspace(mn, mx, n_words*2))
         cb.ax.tick_params(labelsize=10)
         for color, tick in zip(colors, cb.ax.get_yticklabels()):
@@ -100,7 +132,17 @@ def show_lsi(tfidf, svd, svd_trans, df,
     plt.tight_layout()
 
 
-def find_k(tfidf, svd_trans, k_range):
+def explore_k(svd_trans, k_range):
+    '''
+    Explores various values of k in KMeans
+
+    Args:
+        svd_trans: dense array with lsi transformed data
+        k_range: the range of k-values to explore
+    Returns:
+        scores: list of intertia scores for each k value
+    '''
+
     scores = []
     for k in np.arange:
         km = KMeans(n_clusters=k, init='k-means++', max_iter=100, n_init=1,
@@ -111,11 +153,23 @@ def find_k(tfidf, svd_trans, k_range):
     plt.xlabel('# of clusters')
     plt.ylabel('Inertia')
     sns.despine(offset=5, trim=True)
-    return k_range, scores
+    return scores
 
 
 def kmeans(tfidf, svd, svd_trans, k=200, n_words=10):
-    km = KMeans(n_clusters=200, init='k-means++', max_iter=100, n_init=5,
+    '''
+    Performs k-means clustering on svd transformed data
+
+    Args:
+        tfidf: sklearn fitted TfidfVectorizer
+        svd: sklearn fitted TruncatedSVD
+        svd_trans: dense array with lsi transformed data
+        k: the k in k-means
+    Returns:
+        km: the fitted KMean object
+    '''
+
+    km = KMeans(n_clusters=k, init='k-means++', max_iter=100, n_init=5,
                 verbose=2)
     km.fit(svd_trans)
 
@@ -151,5 +205,4 @@ def kmeans(tfidf, svd, svd_trans, k=200, n_words=10):
             tick.set_color(color)
             tick.set_fontsize(14)
         cb.set_ticklabels(np.array(terms)[order_centroids[i, :n_words][::-1]])
-    #plt.tight_layout()
     return km

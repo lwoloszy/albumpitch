@@ -11,7 +11,6 @@ from pymongo import MongoClient
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.cross_validation import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.cross_validation import cross_val_score
 from sklearn.grid_search import GridSearchCV
@@ -20,14 +19,8 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.metrics.pairwise import cosine_similarity
 
-from stop_words import get_stop_words
-# import requests
 import nltk.corpus
-from nltk.stem.porter import PorterStemmer
-
-import text_preprocess as textpre
 import utility_funcs as uf
-reload(textpre)
 
 sns.set_style('ticks')
 sns.set_context('talk')
@@ -35,7 +28,7 @@ sns.set_context('talk')
 
 def get_documents():
     '''
-    Get Pitchfork album reviews from MongoDB
+    Gets Pitchfork album reviews from MongoDB
 
     Args:
         None
@@ -78,7 +71,7 @@ def append_genres(df):
 
 def plot_albums_genre(df):
     '''
-    Plot number of reviews for each music genre
+    Plots number of reviews for each music genre
 
     Args:
         df: dataframe with Pitchfork reviews
@@ -111,7 +104,7 @@ def plot_albums_genre(df):
 
 def plot_albums_reviewer(df):
     '''
-    Plot number of reviews for each reviewer
+    Plots number of reviews for each reviewer
 
     Args:
         df: dataframe with Pitchfork reviews
@@ -141,7 +134,7 @@ def plot_albums_reviewer(df):
 
 def plot_review_length(df):
     '''
-    Plot distribution of article lengths
+    Plots distribution of article lengths
 
     Args:
         df: dataframe with Pitchfork reviews
@@ -312,73 +305,33 @@ def basic_lsi(df, n_components=200, max_df=0.5, min_df=5):
     return tfidf, tfidf_trans, svd, svd_trans
 
 
-def extended_tfidf(df):
-    abstracts = df['abstract'].tolist()
-    reviews = df['review'].tolist()
-    genres = df['genres'].map(lambda x: ' '.join(x)).tolist()
-    artists = df['artists'].map(lambda x: ' '.join(x)).tolist()
-    albums = df['album'].tolist()
-    labels = df['labels'].map(lambda x: ' '.join(x)).tolist()
+def basic_lda(df, n_topics=200, max_df=0.5, min_df=5):
+    '''
+    Basic LDA model for album recommendations
 
-    new_reviews = []
-    for i, (artist, review) in enumerate(zip(artists, reviews)):
-        new_reviews.append(textpre.prepend_first_name(artist, review))
+    Args:
+        df: dataframe with Pitchfork reviews
+        n_topics: number of lda topics
+        max_df: max_df in TfidfVectorizer
+        min_df: min_df in TfidfVectorizer
+    Returns:
+        tfidf: sklearn fitted TfidfVectorizer
+        tfidf_trans: sparse matrix with tfidf transformed data
+        lda: sklearn fitted LatentDirichletAllocation
+        lda_trans: dense array with lda transformed data
 
-    reviews = new_reviews
-    together = [abstracts, reviews, genres, artists, albums, labels]
-    entries = [' '.join(entry) for entry in zip(*together)]
+    '''
 
-    # r = requests.get('http://fs1.position2.com/bm/txt/stopwords.txt')
-    # stopwords = r.content.split('\n')
-    # stopwords = nltk.corpus.stopwords.words('english')
-
-    # with open('data/stopwords.txt') as f:
-    #    stopwords = f.readlines()
-    #    stopwords = [stopword.strip() for stopword in stopwords]
-
-    stopset = textpre.get_stopset()
-    stemmer = textpre.get_stemmer('snowball')
-
-    ctpre = textpre.CustomTextPreprocessor(merge_capitalized=True)
-    ctok = textpre.CustomTokenizer(stopset, stemmer)
-
-    tfidf = TfidfVectorizer(stop_words=stopset,
-                            preprocessor=ctpre, tokenizer=ctok,
-                            max_df=0.75, min_df=5)
-    tfidf_trans = tfidf.fit_transform(entries)
-    return tfidf, tfidf_trans
-
-
-def extended_lsi(df, n_components=200):
-    print('Starting TfIdf')
-    tfidf, tfidf_trans = extended_tfidf(df)
-
-    print('Starting SVD')
-    svd = TruncatedSVD(n_components=n_components)
-    svd_trans = svd.fit_transform(tfidf_trans)
-
-    return tfidf, tfidf_trans, svd, svd_trans
-
-
-def basic_lda(df, max_df=0.5, min_df=5):
     X = df['review']
     cv = CountVectorizer(stop_words='english',
                          min_df=5,
                          max_df=0.5)
     cv_trans = cv.fit_transform(X)
 
-    lda = LatentDirichletAllocation(n_topics=200, max_iter=7)
+    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=7)
     lda_trans = lda.fit_transform(cv_trans)
 
     return cv, cv_trans, lda, lda_trans
-
-
-def extended_lda(df):
-    tfidf, tfidf_trans = extended_tfidf(df)
-    lda = LatentDirichletAllocation(n_topics=100, max_iter=5)
-    lda_trans = lda.fit_transform(tfidf_trans)
-
-    return tfidf, tfidf_trans, lda, lda_trans
 
 
 def print_top_words(vectorizer, clf, class_labels, n=10):
@@ -401,6 +354,19 @@ def print_top_words(vectorizer, clf, class_labels, n=10):
 
 
 def print_recommendations(df, svd_trans, album_idx, n=25):
+    '''
+    Prints list of recommended albums
+
+    Args:
+        df: dataframe with Pitchfork reviews
+        svd_trans: the low dimensional representation of each review
+        album_idx: the iloc value of album for which to generate reccs
+        n: number of albums to recommend
+    Returns:
+        None
+
+    '''
+
     sims = cosine_similarity(svd_trans[album_idx, :].reshape(1, -1), svd_trans)
     df_temp = df.iloc[np.argsort(sims).flatten()[-n:]]
     df_temp['sim_scores'] = np.sort(sims.flatten())[-n:]
@@ -409,9 +375,19 @@ def print_recommendations(df, svd_trans, album_idx, n=25):
 
 def print_components(tfidf, svd, svd_trans, df,
                      n_comp=10, n_words=10, n_docs=10):
-    # transformed = svd.transform(tfidf.transform(df['review']))
-    # top_docs = np.argsort(transformed, axis=0)
+    '''
+    Prints top and bottom words for each svd component
 
+    Args:
+        tfidf: fitted sklearn TfidfVectorizer object
+        svd: fitted sklearn TruncatedSVD object
+        svd_trans: the low dimensional representation of each review
+        album_idx: the iloc value of album for which to generate reccs
+        n: number of albums to recommend
+    Returns:
+        None
+
+    '''
     components = svd.components_
     words = np.array(tfidf.get_feature_names())
     for i, component in enumerate(components[0:n_comp], 1):
@@ -433,9 +409,3 @@ def print_components(tfidf, svd, svd_trans, df,
         print('\nTop albums:')
         print('\n\t'+'\n\t'.join(artist_album))
         print('\n')
-
-
-def print_top(tfidf, tfidf_trans, n_words=10):
-    top_idx = np.argsort(np.mean(tfidf_trans.toarray(), axis=0))[-n_words:]
-    words = np.array(tfidf.get_feature_names())[top_idx]
-    print(words)

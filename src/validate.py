@@ -1,11 +1,9 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy import optimize
 import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
-from matplotlib.ticker import NullFormatter
-from sklearn.metrics.pairwise import cosine_distances, cosine_similarity
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
 
 import statsmodels.api as sm
@@ -24,19 +22,46 @@ LABEL_DICT = {'acoustic': 'Acousticness',
               'loud': 'Loudness',
               'speech': 'Speechiness',
               'tempo': 'Tempo',
-              'valence': 'Valence'
-}
+              'valence': 'Valence'}
 
 
-
-def get_similarities(df, svd_trans, func='raw', normalize=False,
+def get_af_diffs(df, svd_trans, func='raw', normalize=False,
                      restrict=False, n=250):
+    """
+    Computes distances between the mean track audio features
+    of a seed album and those albums recommended by a recommendation
+    algorithm. Performs this for all albums in collection that have
+    audio features.
+
+    Args:
+        df: pandas dataframe that has all the audio features
+            as well as auxiliary information identifying the album
+            such as its artists, genres, etc.
+        svd_trans: the representation of each and every album in df
+                   in the reduced dimensionality space
+        func: compute differences between track features
+              on a per feature basis ('raw') or collapse
+              those difference to a single number with a function
+              such as cosine_distance (default='raw')
+        normalize: normalize the audiofeatures across
+                   the albums before computing differences (default=False)
+        restrict: restrict the set of distance calculations to
+                  albums in the same genre and excluding the same artist
+                  (control manipulation)
+        n: how far down the rankings to go (default=250)
+    Returns:
+        all_lsi_sims: list of dataframes, where each dataframe has
+                      the cosine similarities between a given seed
+                      album and all the other albums
+        all_audio_diffs: list of dataframes, where each dataframe
+                         has the audio differences between a given
+                         seed album and all the other albums
+    """
+
     # for validation, use only tracks that have audio information
     # as scraped from spotify (and matched in pitchfork)
     df['has_audio_features'] = ~df['acoustic'].isnull()
 
-    FEATURE_NAMES = ['acoustic', 'dance', 'energy', 'instrument',
-                     'live', 'loud', 'speech', 'tempo', 'valence']
     features_and_sims = FEATURE_NAMES + ['lsi_sims']
 
     valid_idx = np.where(df['has_audio_features'])[0]
@@ -113,6 +138,16 @@ def get_similarities(df, svd_trans, func='raw', normalize=False,
 
 
 def plot_af_diffs(all_audio_diffs):
+    """
+    Plots the mean album audio features differences as a function
+    of recommendation rank. Does this for all individual audio features.
+
+    Args:
+        all_audio_diffs: list of dataframes as returned from get_af_diffs
+    Returns:
+        None
+    """
+
     plt.close('all')
     fig = plt.figure()
     colors = sns.color_palette('Set1', 10)
@@ -123,21 +158,33 @@ def plot_af_diffs(all_audio_diffs):
         mean_diff = df.groupby(df.index).mean()[:].values.flatten()
         sem_diff = df.groupby(df.index).sem()[:].values.flatten()
         ax = fig.add_subplot(3, 3, i+1)
-        plot_indiv_diff(ax, mean_diff, sem_diff, LABEL_DICT[feature_name], colors[i])
+        plot_indiv_diff(ax, mean_diff, sem_diff, LABEL_DICT[feature_name],
+                        colors[i])
         if i != 6:
-            #ax.xaxis.set_major_formatter(NullFormatter())
-            #ax.yaxis.set_major_formatter(NullFormatter())
+            # ax.xaxis.set_major_formatter(NullFormatter())
+            # ax.yaxis.set_major_formatter(NullFormatter())
             pass
         else:
             ax.set_xlabel('Recommendation rank')
-            #ax.set_ylabel('# of instances')
-
+            # ax.set_ylabel('# of instances')
 
     sns.despine(offset=5, trim=True)
     plt.tight_layout()
 
 
 def plot_af_beta_dists(all_audio_diffs):
+    """
+    Plots distribution of individual beta coefficients, where the betas
+    try to capture linear relationship between recommendation rank and
+    audio features diff (compute one beta coefficient for each and every
+    seed album and each and every audio feature)
+
+    Args:
+        all_audio_diffs: list of dataframes as returned from get_af_diffs
+    Returns:
+        None
+    """
+
     plt.close('all')
     fig = plt.figure()
     colors = sns.color_palette('Set1', 10)
@@ -157,8 +204,8 @@ def plot_af_beta_dists(all_audio_diffs):
         ax.set_ylim(0, 2500)
         ax.set_yticks(np.arange(0, 2501, 500))
         if i != 6:
-            #ax.xaxis.set_major_formatter(NullFormatter())
-            #ax.yaxis.set_major_formatter(NullFormatter())
+            # ax.xaxis.set_major_formatter(NullFormatter())
+            # ax.yaxis.set_major_formatter(NullFormatter())
             pass
         else:
             ax.set_xlabel(r"$\beta_1$")
@@ -167,31 +214,40 @@ def plot_af_beta_dists(all_audio_diffs):
     sns.despine(offset=5, trim=True)
 
 
-def plot_cos_sims(all_cos_sims):
+def plot_cos_diffs(all_cos_diffs):
+    """
+    Plots mean cosine difference between seed album and recommended
+    albums sorted by recommendation rank
+
+    Args:
+        all_cos_diffs: list of dataframes as returned from get_af_diffs
+    Returns:
+        None
+    """
+
     plt.close('all')
     fig = plt.figure()
     ax = fig.add_subplot(111)
     feature_name = ['sim_func']
-    df = pd.concat([seed[feature_name] for seed in all_cos_sims])
+    df = pd.concat([seed[feature_name] for seed in all_cos_diffs])
     df.index.name = 'recc_rank'
 
     mean_diff = df.groupby(df.index).mean().values.flatten()
     sem_diff = df.groupby(df.index).sem().values.flatten()
-    # return df.groupby(df.index).std()
-    color = sns.color_palette('Set1', 2)[1]
+    # color = sns.color_palette('Set1', 2)[1]
     plot_indiv_diff(ax, mean_diff, sem_diff, 'Cosine Distance', 'k')
 
+    # n = len(mean_diff)
     # inset_ax = fig.add_axes([.25, .6, .1, .3])
-    n = len(mean_diff)
     # lh, rh = mean_diff[:n/2], mean_diff[n/2:n]
     # m_lh, m_rh = np.mean(lh), np.mean(rh)
     # sem_lh, sem_rh = np.std(lh)/np.sqrt(n/2), np.std(rh)/np.sqrt(n/2)
 
-    model = sm.OLS(df['sim_func'].values, sm.add_constant(df.index.values))
-    params = model.fit().params
-    ax.add_line(plt.Line2D(np.arange(n), np.arange(n)*params[1]+params[0],
-                           color=color, linestyle='--'))
-    ax.set_xlabel('Recommendation rank')
+    # model = sm.OLS(df['sim_func'].values, sm.add_constant(df.index.values))
+    # params = model.fit().params
+    # ax.add_line(plt.Line2D(np.arange(n), np.arange(n)*params[1]+params[0],
+    #                       color=color, linestyle='--'))
+    # ax.set_xlabel('Recommendation rank')
 
     # N = np.arange(2)
     # width = 0.75
@@ -208,10 +264,22 @@ def plot_cos_sims(all_cos_sims):
 
 
 def plot_indiv_diff(ax, y, y_e, y_label, color):
+    """
+    Plots y as a function of its index
+
+    Args:
+        ax: axis object on which to plot
+        y: the set of y values
+        y: the set of y errors
+        y_label: axis y label
+        color: line color
+    Returns:
+        None
+    """
+
     x = np.arange(len(y))
     ax.add_line(plt.Line2D(x, y, color=color))
     ax.fill_between(x, y-y_e, y+y_e, color=color, alpha=0.5)
-    #ax.set_xlabel('Recommendation rank')
     ax.set_ylabel(y_label)
     ax.set_xlim(0, len(y)+1)
     ax.set_ylim(np.min(y), np.max(y)*1.1)
@@ -219,6 +287,28 @@ def plot_indiv_diff(ax, y, y_e, y_label, color):
 
 def plot_indiv_hist(ax, vals, pvals, label, color='k', alpha=0.05,
                     mn=None, mx=None, n_bins=20):
+    """
+    Plots distribution of values, where some values are significant
+    and indicated by filled-in bars and other values are not
+    significant as indicated by open bars
+
+    Args:
+        ax: axis object on which to plot
+        vals: the set of values over which to plot hist
+        pvals: array of same length as vals indicating
+               the pvalue
+        label: the label for the plot
+        color: the color for the bars
+        alpha: the alpha level to use to determining pval sig
+        mn: the min value over which to compute histogram;
+            if None (default) will be compute from data
+        mx: the max value over which to compute histogram;
+            if None (default) will be compute from data
+        n_bins: number of bins to use for histogram (default=20)
+    Returns:
+        None
+    """
+
     if not mn:
         mn = np.min(vals)
     if not mx:
@@ -245,16 +335,26 @@ def plot_indiv_hist(ax, vals, pvals, label, color='k', alpha=0.05,
     ax.text(0, 0.8, label, transform=ax.transAxes, fontsize=12,
             horizontalalignment='left')
 
-    #ax.axvline(np.mean(vals), color='k')
     print(scp.ttest_1samp(vals, 0))
 
 
-def plot_cosafs_vs_coslsi(all_lsi_sims, all_cos_sims, win_size=100):
+def plot_cosafs_vs_coslsi(all_lsi_sims, all_cos_diffs, win_size=100):
+    """
+    Plots mean audio features cos difference as a function of mean
+    lsi difference
+
+    Args:
+        all_lsi_sims: list of dataframes as returned from get_af_diffs
+        all_cos_diffs: list of dataframes as returned from get_af_diffs
+    Returns:
+        None
+
+    """
     plt.close('all')
     fig = plt.figure()
     ax = fig.add_subplot(111)
     feature_name = ['sim_func']
-    df_cos = pd.concat([seed[feature_name][1:] for seed in all_cos_sims])
+    df_cos = pd.concat([seed[feature_name][1:] for seed in all_cos_diffs])
     df_lsi = pd.concat([seed[:][1:] for seed in all_lsi_sims])
 
     x = df_lsi.values.flatten()
@@ -282,32 +382,10 @@ def plot_cosafs_vs_coslsi(all_lsi_sims, all_cos_sims, win_size=100):
     ax.set_ylabel('Spotify AudioFeatures cosine distance')
 
 
-def permutation_cosafs_vs_coslsi(all_lsi_sims, all_cos_sims, n_perm=1000):
-    plt.close('all')
-    feature_name = ['sim_func']
-    df_cos = pd.concat([seed[feature_name][1:] for seed in all_cos_sims])
-    df_lsi = pd.concat([seed['sims'][1:] for seed in all_lsi_sims])
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-
-    x = df_lsi.values
-    y = df_cos.values.flatten()
-
-    real_corr = np.corrcoef(x, y)[0, 1]
-
-    permuted_corrs = []
-    for i in xrange(n_perm):
-        print(i)
-        permuted_x = x[np.random.permutation(len(x))]
-        permuted_corrs.append(np.corrcoef(permuted_x, y)[0, 1])
-
-    real_corr = np.corrcoef(x, y)[0, 1]
-
-    return permuted_corrs, real_corr
-
-
 def compute_regression(X, y):
+    """
+    Compute simple regression coefficient between X and y
+    """
     X = sm.add_constant(X)
     model = sm.OLS(y, X).fit()
     return model.params[1], model.pvalues[1]

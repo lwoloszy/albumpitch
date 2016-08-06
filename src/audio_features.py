@@ -4,6 +4,17 @@ import pandas as pd
 
 
 def get_mean_audio_features():
+    """
+    Computes the across track mean audio features for each album in catalog
+    and returns the result in a pandas dataframe
+
+    Args:
+        None
+    Returns:
+        df: Pandas DataFrame with each column representing a different
+            audio feature (additional columns identify album)
+    """
+
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
 

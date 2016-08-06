@@ -17,6 +17,21 @@ ASC = pymongo.ASCENDING
 def get_track_features(
         creds_filepath='/Users/lukewoloszyn/.apikeys/spotify.json',
         max_retries=10):
+    """
+    Queries the Spotify API for track audio features and stores data in MongoDB.
+    This is a multi-stage process. We first find the Spotify album id, retrieve
+    the Spotify track ids associated with each album, and finally get the audio
+    features for each track. We also keep track of which pitchfork album we
+    used to get those features to make matching up the albums between Pitchfork
+    and Spotify easier.
+
+    Args:
+        creds_filepath: path of json file containing Spotify credentials
+        max_retries: maximum number of times to retry a spefic Spotify query
+                     before moving on
+    Returns:
+        None
+    """
 
     client = MongoClient()
     db = client['albumpitch']
@@ -142,6 +157,20 @@ def get_track_features(
 
 
 def coregister_albums():
+    """
+    For every Spotify album returned from the Pitchfork-seeded query,
+    finds the one that best matches the Pitchfork album (if any). This
+    is obviously easiest when the query returned only one album, but gets
+    progressively harder the more albums were returned. Stores the
+    Spotify album id in the pitchfork MongoDB collection.
+
+    Args:
+        None
+    Returns:
+        None
+    """
+
+
     client = MongoClient()
 
     db = client['albumpitch']
@@ -221,7 +250,18 @@ def coregister_albums():
 
 
 def determine_best_match(pitch_album, spotify_albums):
-    # try to see which album matches closest
+    """
+    Finds best match between a pitchfork album and a set of spotify
+    albums returned from a query. Uses several hand-crafted heuristics
+    to match up the albums.
+
+    Args:
+        pitch_album: a document from pitchfork collection
+        spotify_albums: a list of documents from spotify_albums collection
+    Returns:
+        None
+    """
+
     pitchfork_name = pitch_album['album']
     pitchfork_name = unidecode(pitchfork_name)
     pitchfork_name = pitchfork_name.lower().strip()

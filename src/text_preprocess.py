@@ -12,8 +12,17 @@ from pymongo import MongoClient
 
 
 class CustomTokenizer(object):
+    """
+    Performs custom tokenization
+    """
 
     def __init__(self, stopset=None, stemmer=None):
+        """
+        Args:
+            stopset: list of words which are stopwords
+            stemmer: callable which stems words
+        """
+
         if stopset:
             self.stopset = set(stopset)
         else:
@@ -25,6 +34,15 @@ class CustomTokenizer(object):
             self.stemmer = lambda x: x
 
     def tokenize(self, text):
+        """
+        Tokenizes text
+
+        Args:
+            text: string
+        Returns:
+            words: list of tokenized words
+        """
+
         words = nltk.word_tokenize(text)
 
         # split on hyphens manually and lowercase
@@ -41,12 +59,25 @@ class CustomTokenizer(object):
 
 
 class CustomTokenizerWithPOS(CustomTokenizer):
+    """
+    Performs custom tokenization using part of speech tagging
+    to find proper nouns
+    """
 
     def __init__(self, stopset=None, stemmer=None):
         super(CustomTokenizerWithPOS, self).__init__(stopset=stopset,
                                                      stemmer=stemmer)
 
     def tokenize(self, text):
+        """
+        Tokenizes text
+
+        Args:
+            text: string to tokenize
+        Returns:
+            words: list of tokenized words
+        """
+
         # tokenize into sentences
         sents = nltk.tokenize.sent_tokenize(text)
 
@@ -75,12 +106,32 @@ class CustomTokenizerWithPOS(CustomTokenizer):
 
 
 class CustomTextPreprocessor(object):
+    """
+    Performs custom text preprocessing to better handle
+    Pitchfork reviews when using bag of words models
+    """
+
 
     def __init__(self, merge_capitalized=True):
+        """
+        Args:
+            merge_capitalize: whether to merge conseucitve capitalized words
+        """
+
         # are we going to merge consecutive capitalized words?
         self.merge_capitalized = merge_capitalized
 
     def normalize(self, text):
+        """
+        Performs regular expression magic to put Pitchfork data in
+        better format
+
+        Args:
+            text: string to normalize
+        Returns:
+            text: formatted text
+        """
+
         # keep hip-hop as one word
         text = re.sub(r'(hip)[-/\s](hop)', r'\1_\2', text)
 
@@ -149,6 +200,18 @@ class CustomTextPreprocessor(object):
 # utility functions for pre-processing text
 
 def prepend_first_name(artist, text):
+    """
+    Prepends first name to a piece of text where the artist
+    has a first name/last name and the text sometimes refers
+    to the artist only by last name
+
+    Args:
+        artist: string that is the artist name
+        text: review of the artist's work
+    Returns:
+        None
+    """
+
     artist_parts = artist.split()
 
     if len(artist_parts) != 2:
@@ -173,6 +236,17 @@ def prepend_first_name(artist, text):
 
 
 def merge_proper_nouns(word_pos_tups):
+    """
+    Merges consecutive words that have been tagged as proper nouns
+
+    Args:
+        word_pos_tups: list of tuples, where first tuple element
+                       is word and second tuple element is part of speech
+    Returns:
+        out: list of words, where consecutive proper nouns have been
+             merged with an _
+    """
+
     out = []
     iterator = groupby(word_pos_tups,
                        lambda x: 'NNP' in x or 'NNPS' in x)
@@ -185,6 +259,16 @@ def merge_proper_nouns(word_pos_tups):
 
 
 def discover_subgenres(all_text):
+    """
+    Discovers music subgenres within text by constructing bigrams triggered
+    on specific music terms
+
+    Args:
+        all_text: text string
+    Returns:
+        None (output save in file)
+    """
+
     genres = ['(rock', 'pop', 'punk', 'metal', 'country', 'blues', 'hip-hop',
               'rap', 'R&B', 'jazz', 'soul', 'classical', 'songwriter',
               'contemporary', 'funk', 'folk', 'techno', 'wave', 'electronic)']
@@ -199,6 +283,16 @@ def discover_subgenres(all_text):
 
 
 def tokenize_and_save():
+    """
+    Tokenizes the set of pitchfork reviews and store the tokens in
+    MongoDB pitchfork collection
+
+    Args:
+        None
+    Returns:
+        None
+    """
+
     client = MongoClient()
     db = client['albumpitch']
     coll = db['pitchfork']
@@ -228,6 +322,16 @@ def tokenize_and_save():
 
 
 def pretokenize(df):
+    """
+    Appends to dataframe the list of tokenized words for "caching"
+    purposes
+
+    Args:
+        df: dataframe of pitchfork reviews
+    Returns:
+        None
+    """
+
     stopset = get_stopset()
     stemmer = get_stemmer('snowball')
     preprocessor = CustomTextPreprocessor(merge_capitalized=True)
@@ -244,6 +348,16 @@ def pretokenize(df):
 
 
 def concat_review_elements(doc, prepend=True):
+    """
+    Concatenates various elements of a review into single string
+
+    Args:
+        doc: dictionary like object with keys abstract, review, genres,
+             artists, labels and album
+    Returns:
+        concatenated string
+    """
+
     abstract = doc['abstract']
     review = doc['review']
     genre = u' '.join(doc['genres'])
@@ -259,6 +373,9 @@ def concat_review_elements(doc, prepend=True):
 
 
 def get_stopset():
+    """
+    Gets a set of stopwords
+    """
     stopset = set(get_stop_words('en'))
 
     # get those contractions
@@ -289,6 +406,13 @@ def get_stopset():
 
 
 def get_stemmer(name):
+    """
+    Retrieves stemmer
+
+    Args:
+        name: stemmer to use; can be one of porter or snowball
+    """
+
     if name == 'porter':
         return PorterStemmer()
     elif name == 'snowball':

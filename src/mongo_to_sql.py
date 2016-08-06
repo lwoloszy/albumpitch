@@ -3,6 +3,16 @@ import psycopg2
 
 
 def insert_pitchfork_reviews():
+    """
+    Transfers MongoDB pitchfork collection into Postgres pitchfork table
+
+    Args:
+        None
+    Returns:
+        None
+    """
+
+
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
 
@@ -50,6 +60,17 @@ def insert_pitchfork_reviews():
 
 
 def insert_audio_features():
+    """
+    Transfers MongoDB spotify_audio_features collection into
+    Postgres spotify_audio_features table
+
+    Args:
+        None
+    Returns:
+        None
+    """
+
+
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
 
@@ -93,6 +114,15 @@ def insert_audio_features():
 
 
 def insert_spotify_albums():
+    """
+    Transfers MongoDB spotify_albums collection into Postgres spotify_albums table
+
+    Args:
+        None
+    Returns:
+        None
+    """
+
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
 
@@ -119,6 +149,16 @@ def insert_spotify_albums():
 
 
 def create_table_pitchfork():
+    """
+    Creates pitchfork table in Postgres albumpitch database
+
+    Args:
+        None
+    Returns:
+        None
+    """
+
+
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
     cur.execute("""
@@ -149,6 +189,15 @@ def create_table_pitchfork():
 
 
 def create_table_audio_features():
+    """
+    Creates spotify_audio_features table in Postgres albumpitch database
+
+    Args:
+        None
+    Returns:
+        None
+    """
+
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
     cur.execute("""
@@ -174,6 +223,15 @@ def create_table_audio_features():
 
 
 def create_table_albums():
+    """
+    Creates spotify_albums table in Postgres albumpitch database
+
+    Args:
+        None
+    Returns:
+        None
+    """
+
     conn = psycopg2.connect(database='albumpitch', user='lukewoloszyn')
     cur = conn.cursor()
     cur.execute("""

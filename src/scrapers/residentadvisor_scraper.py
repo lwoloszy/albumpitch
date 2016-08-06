@@ -1,4 +1,3 @@
-import re
 import argparse
 import time
 import requests as r
@@ -16,6 +15,22 @@ HEADERS = {'User-Agent':
 
 def run(year_start, month_start, format_='album',
         max_tries=10, overwrite=False):
+    """
+    Gets all reviews from residentadvisor and stores in MongoDB
+    albumpitch database
+
+    Args:
+        year_start: the year from which to start scraping
+        month_start: the month from which to start scraping
+        format_: 'single' or 'album'
+        max_retries: maximum number of requests to issue before
+                     moving on (default=10)
+        overwrite: whether to overwrite existing collection in MongoDB database
+                   (default=False)
+    Returns:
+        None
+    """
+
     client = MongoClient()
     db = client['albumpitch']
     if 'residentadvisor' in db.collection_names() and overwrite:
@@ -68,6 +83,16 @@ def get_review_links(year, month, format_='album', max_tries=10):
 
 
 def get_links_page(year, month, format_):
+    """
+    Retrieves the raw html that contains the links to a set of
+    albums
+
+    Args:
+        page_num: the page number to retrieve
+    Returns:
+        response: a requests response object
+    """
+
     session = r.Session()
     params = {'format': format_, 'yr': year, 'mn': month}
     response = session.get(BASE_URL+'/reviews.aspx',
@@ -76,7 +101,16 @@ def get_links_page(year, month, format_):
 
 
 def parse_links(html):
-    # parse html to retrieve list of reviews available for month/year
+    """
+    Parses a raw html using BeautifulSoup to extract out the set
+    of links that will take us to the available reviews
+
+    Args:
+        html: the raw html
+    Returns:
+        review_links: list with the review links
+    """
+
     soup = BeautifulSoup(html, 'lxml')
     articles = soup.find_all('article')
     review_links = [article.find('a').get('href')
@@ -85,6 +119,15 @@ def parse_links(html):
 
 
 def get_review_page(review_link):
+    """
+    Retrieves raw html of one review
+
+    Args:
+        review_link: a string that is the link to the review
+    Returns:
+        response: a requests response object
+    """
+
     session = r.Session()
     response = session.get(BASE_URL + review_link, headers=HEADERS)
     return response

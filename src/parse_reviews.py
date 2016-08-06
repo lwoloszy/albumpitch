@@ -5,6 +5,17 @@ from bs4 import BeautifulSoup
 
 
 def parse_reviews(website):
+    """
+    Parses the set of raw html reviews scraped from the given website
+
+    Args:
+        website: the site which to parse. Can be one of 'pitchfork',
+                 'rollingstone', 'residentadvisor', 'lineofbestfit',
+                 'tinymixtapes'
+    Returns:
+        None
+    """
+
     client = MongoClient()
     db = client['albumpitch']
     coll = db[website]
@@ -43,6 +54,16 @@ def parse_reviews(website):
 
 
 def parse_pitchfork(html, parser='lxml'):
+    """
+    Parses a single pitchfork review using BeautifulSoup
+
+    Args:
+        html: the raw scraped html
+        parser: marker argument passed to BeautifulSoup
+    Returns:
+        None
+    """
+
     soup = BeautifulSoup(html, parser)
     out = {}
 
@@ -94,6 +115,16 @@ def parse_pitchfork(html, parser='lxml'):
 
 
 def parse_residentadvisor(html):
+    """
+    Parses a single residentadvisor review using BeautifulSoup
+
+    Args:
+        html: the raw scraped html
+        parser: marker argument passed to BeautifulSoup
+    Returns:
+        None
+    """
+
     soup = BeautifulSoup(html, 'lxml')
     out = {}
 
@@ -140,6 +171,16 @@ def parse_residentadvisor(html):
 
 
 def parse_rollingstone(html, parser):
+    """
+    Parses a single rollingstone review using BeautifulSoup
+
+    Args:
+        html: the raw scraped html
+        parser: marker argument passed to BeautifulSoup
+    Returns:
+        None
+    """
+
     soup = BeautifulSoup(html, parser)
     out = {}
 
@@ -182,6 +223,16 @@ def parse_rollingstone(html, parser):
 
 
 def parse_lineofbestfit(html, parser):
+    """
+    Parses a single lineofbestfit review using BeautifulSoup
+
+    Args:
+        html: the raw scraped html
+        parser: marker argument passed to BeautifulSoup
+    Returns:
+        None
+    """
+
     soup = BeautifulSoup(html, parser)
     out = {}
 
@@ -217,6 +268,16 @@ def parse_lineofbestfit(html, parser):
 
 
 def parse_tinymixtapes(html, parser):
+    """
+    Parses a single tinymixtapes review using BeautifulSoup
+
+    Args:
+        html: the raw scraped html
+        parser: marker argument passed to BeautifulSoup
+    Returns:
+        None
+    """
+
     soup = BeautifulSoup(html, parser)
     out = {}
 
