@@ -57,6 +57,13 @@ def get_track_features(
         if album.split()[-1] == 'EP':
             album = ' '.join(album.split()[0:-1])
 
+        # a few tricks to get a few more items
+        # try to find a non-collector's edition (second pass)
+        # album = re.sub(r'[\[\(].*(Edition|Remastered).*[\]\)]', '',
+        #               album, flags=re.IGNORECASE).strip()
+        album = re.sub(r'[:[(][^:]*(Edition|Remaster|Reissue).*', '',
+                       album, flags=re.IGNORECASE).strip()
+
         album = re.sub(':', '', album)
         artist = re.sub(':', '', artist)
         try:
@@ -82,7 +89,7 @@ def get_track_features(
             continue
 
         if not len(result['albums']['items']):
-            with open('../logs/query_not_in_spotify_catalog_noep', 'a') as f:
+            with open('../logs/query_not_in_spotify_catalog_noedition2', 'a') as f:
                 f.write(doc['url']+'\n')
             continue
 
