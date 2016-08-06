@@ -74,12 +74,12 @@ def index():
     cur = db.engine.execute(sql_query)
     results = cur.fetchall()
 
-    album_list = [results[i:i+n_col]
-                  for i in xrange(0, len(results), n_col)]
+    # album_list = [results[i:i+n_col]
+    #              for i in xrange(0, len(results), n_col)]
 
     return render_template('index.html',
                            seed_album=album_query, seed_word=keyword_query,
-                           album_list=album_list)
+                           albums=results)
 
 
 @main.route('/_typeahead')

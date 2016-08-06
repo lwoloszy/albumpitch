@@ -60,13 +60,12 @@
     limit: Infinity
   }
 );
-   </script>
-
+</script>
 
 {% if seed_album %}
 <div class="container-fluid header-txt">
   <h4>
-    <div class="row top-buffer" style="text-align:center">
+    <div class="row-fluid buffer">
       <p>Here are some albums that AlbumPitch thinks you might enjoy if you liked...</p>
       <b>{{seed_album}}</b>
     </div>
@@ -74,8 +73,8 @@
 </div>
 {% elif seed_word %}
 <div class="container-fluid header-txt">
-  <div class="row top-buffer" style="text-align:center">
-    Here are some albums that AlbumPitch thinks are similar to the phrase...
+  <div class="row-fluid buffer">
+    <p>Here are some albums that AlbumPitch thinks are similar to the phrase...</p>
     <b>{{seed_word}}</b>
   </div>
 </div>
@@ -83,24 +82,21 @@
 <img src="{{url_for('static', filename='barnett_background.jpg')}}" class="img-responsive" width=100% style="max-height: 500px">
 {% endif %}
 
-<div class="container-fluid col-xs-12 col-sm-12">
-  {% for album_row in album_list %}
-  <div class = "row" style="background-color:white">
-    {% for album in album_row %}
-    <div class="col-xs-6 col-sm-3">
+<div class="container-fluid">
+  <div class="row-fluid" style="background-color:#f1f1f1">
+    {% for album in albums %}
+    <div class="col-xs-6 col-sm-3 col-md-2 col-lg-2">
       <div class="img-container">
         <img src={{album.1}} class="img-responsive" width=100% height:auto>
         {% if album.6 %}
-        <a onclick="window.open('{{album.6}}')" class="btn btn-success btn-sm link-left"><span class="glyphicon glyphicon-music"></span>Listen</a>
+        <a onclick="window.open('{{album.6}}')" class="btn btn-success btn-xs link-left"><span class="glyphicon glyphicon-music"></span>Listen</a>
         {% else %}
-        <a href class="btn btn-default btn-sm link-left" disabled><span class="glyphicon glyphicon-remove-circle"></span>Listen</a>
+        <a href class="btn btn-default btn-xs link-left" disabled><span class="glyphicon glyphicon-remove-circle"></span>Listen</a>
         {% endif %}
 
         <div class="circle similarity2 link-right">
           {{album.5}}
         </div>
-
-
       </div>
 
       <div class="artist-name">
@@ -113,9 +109,17 @@
         {{album.4}}
       </div>
     </div>
+    {% if loop.index is divisibleby 6 %}
+    <div class="clearfix visible-md-block visible-lg-block"></div>
+    {% endif %}
+    {% if loop.index is divisibleby 4 %}
+    <div class="clearfix visible-sm-block"></div>
+    {% endif %}
+    {% if loop.index is divisibleby 2 %}
+    <div class="clearfix visible-xs-block"></div>
+    {% endif %}
     {% endfor %}
-    </div>
-  {% endfor %}
+  </div>
 </div>
 
 {% endblock %}

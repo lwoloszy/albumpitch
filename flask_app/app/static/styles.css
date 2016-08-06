@@ -9,7 +9,8 @@
 
 body {
     font-family: 'Karla', sans-serif;
-    background-color:#fafafa;
+    background-color:#e0e0e0
+;
 }
 
 .img-container {position: relative;}
@@ -24,7 +25,14 @@ body {
     right: -5px;
 }
 
-.top-buffer { margin-bottom: 50px; }
+.buffer {
+    text-align: center;
+    margin-bottom: 50px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    font-size: 17px
+}
+
 
 .pad {
     padding: 10px 20px;
