@@ -25,6 +25,7 @@ SVD_TRANS = None
 
 @main.route('/', methods=['GET'])
 def index():
+    n_col = 4
     n_recc = 200
     album_query = request.args.get('album-query', '')
     keyword_query = request.args.get('keyword-query', '')
@@ -37,13 +38,14 @@ def index():
         SELECT DISTINCT url, artist, album FROM pitchfork
         WHERE concat_ws(': ', artist, album) ilike :album_query
         """
+        album_query = u'%{:s}%'.format(album_query)
         cur = db.engine.execute(text(cmd), album_query=album_query)
         results = cur.fetchall()
 
-        # jsut taking first one
-        # if len(results) != 1:
-        #    return render_template('index.html', album_list=[])
+        if len(results) == 0:
+            return render_template('index.html', album_list=[])
 
+        album_query = '{:s}: {:s}'.format(results[0][1], results[0][2])
         urls, sims = gen_recc_aq(results[0][0], n_recc)
     elif keyword_query:
         urls, sims = gen_recc_kq(keyword_query, n_recc)
@@ -89,8 +91,9 @@ def typeahead():
     sql_query = text(
         """SELECT DISTINCT artist, album FROM pitchfork
         WHERE concat_ws(' ', artist_clean, album_clean) ilike '%{:s}%'
+        or concat_ws(': ', artist_clean, album_clean) ilike '%{:s}%'
         """
-        .format(partial))
+        .format(partial, partial))
     cur = db.engine.execute(sql_query)
     results = [': '.join(result[0:2]) for result in cur.fetchall()]
     return jsonify(matching_results=results[:max_results])
