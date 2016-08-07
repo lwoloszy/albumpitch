@@ -25,7 +25,6 @@ SVD_TRANS = None
 
 @main.route('/', methods=['GET'])
 def index():
-    n_col = 4
     n_recc = 200
     album_query = request.args.get('album-query', '')
     keyword_query = request.args.get('keyword-query', '')
@@ -41,8 +40,9 @@ def index():
         cur = db.engine.execute(text(cmd), album_query=album_query)
         results = cur.fetchall()
 
-        if len(results) != 1:
-            return render_template('index.html', album_list=[])
+        # jsut taking first one
+        # if len(results) != 1:
+        #    return render_template('index.html', album_list=[])
 
         urls, sims = gen_recc_aq(results[0][0], n_recc)
     elif keyword_query:
