@@ -1,3 +1,6 @@
+numpy==1.9.1
+scipy==0.14.0
+scikit-learn==0.17.1
 click==6.6
 dill==0.2.5
 dominate==2.2.1
@@ -11,12 +14,9 @@ itsdangerous==0.24
 Jinja2==2.8
 MarkupSafe==0.23
 nltk==3.2.1
-numpy==1.11.1
 psycopg2==2.6.2
 requests==2.10.0
 scikit-learn==0.17.1
-scipy==0.18.0
-sklearn==0.0
 SQLAlchemy==1.0.14
 stop-words==2015.2.23.1
 Unidecode==0.4.19
