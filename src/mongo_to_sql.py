@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+from unidecode import unidecode
 import psycopg2
 
 
@@ -29,6 +30,8 @@ def insert_pitchfork_reviews():
 
             artist = ' / '.join(doc['artists'])
             album = doc['album']
+            artist_clean = unidecode(artist)
+            album_clean = unidecode(album)
             genres = ', '.join(doc.get('genres', [None]))
 
             pub_date = doc['pub_date']
@@ -45,13 +48,15 @@ def insert_pitchfork_reviews():
 
             SQL = """
             INSERT INTO pitchfork (id, url, spotify_id, artist, album, genres,
-            pub_date, reviewers, labels, year, score, abstract, review, album_art)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            pub_date, reviewers, labels, year, score, abstract, review, album_art,
+            artist_clean, album_clean
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING;
             """
             data = (pid, url, spotify_id, artist, album, genres,
                     pub_date, reviewers, labels, year, score, abstract,
-                    review, album_art)
+                    review, album_art, artist_clean, album_clean)
             cur.execute(SQL, data)
         conn.commit()
     finally:
@@ -170,6 +175,8 @@ def create_table_pitchfork():
 
         artist varchar(255) NOT NULL,
         album varchar(255) NOT NULL,
+        artist_clean varchar(255),
+        album_clean varchar(255),
         genres varchar(255) default NULL,
 
         pub_date timestamp default NULL,

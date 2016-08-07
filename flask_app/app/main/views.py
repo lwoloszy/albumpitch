@@ -88,7 +88,7 @@ def typeahead():
     partial = request.args.get('q')
     sql_query = text(
         """SELECT DISTINCT artist, album FROM pitchfork
-        WHERE concat_ws(' ', artist, album) ilike '%{:s}%'
+        WHERE concat_ws(' ', artist_clean, album_clean) ilike '%{:s}%'
         """
         .format(partial))
     cur = db.engine.execute(sql_query)
