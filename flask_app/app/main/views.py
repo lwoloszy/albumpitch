@@ -25,7 +25,6 @@ SVD_TRANS = None
 
 @main.route('/', methods=['GET'])
 def index():
-    n_col = 4
     n_recc = 200
     album_query = request.args.get('album-query', '')
     keyword_query = request.args.get('keyword-query', '')
@@ -70,7 +69,7 @@ def index():
     FROM sorted s JOIN pitchfork p on s.url = p.url
     LEFT JOIN spotify_albums sa ON p.spotify_id = sa.id
     ORDER BY sim DESC
-    LIMIT 48;
+    LIMIT 36;
     """)
 
     cur = db.engine.execute(sql_query)
@@ -88,13 +87,13 @@ def index():
 def typeahead():
     max_results = 20
     partial = request.args.get('q')
-    sql_query = text(
-        """SELECT DISTINCT artist, album FROM pitchfork
-        WHERE concat_ws(' ', artist_clean, album_clean) ilike '%{:s}%'
-        or concat_ws(': ', artist_clean, album_clean) ilike '%{:s}%'
-        """
-        .format(partial, partial))
-    cur = db.engine.execute(sql_query)
+    partial = u'%{:s}%'.format(partial)
+    cmd = text("""
+    SELECT DISTINCT artist, album FROM pitchfork
+    WHERE concat_ws(' ', artist_clean, album_clean) ilike :partial
+    or concat_ws(': ', artist_clean, album_clean) ilike :partial
+    """)
+    cur = db.engine.execute(cmd, partial=partial)
     results = [': '.join(result[0:2]) for result in cur.fetchall()]
     return jsonify(matching_results=results[:max_results])
 
