@@ -65,7 +65,8 @@ def get_track_features(
         if i % 50 == 0:
             print('Got audio features for {:d} albums'.format(i))
 
-        artist = ' '.join(doc['artists'])
+        # artist = ' '.join(doc['artists'])
+        artist = doc['artists'][0]
         album = doc['album']
 
         # spotify doesn't like the EP ending so remove it
@@ -76,8 +77,12 @@ def get_track_features(
         # try to find a non-collector's edition (second pass)
         # album = re.sub(r'[\[\(].*(Edition|Remastered).*[\]\)]', '',
         #               album, flags=re.IGNORECASE).strip()
-        album = re.sub(r'[:[(][^:]*(Edition|Remaster|Reissue).*', '',
-                       album, flags=re.IGNORECASE).strip()
+        # album = re.sub(r'[:[(][^:]*(Edition|Remaster|Reissue).*', '',
+        #               album, flags=re.IGNORECASE).strip()
+        # album = re.sub(r'\bOST\b', 'Original Soundtrack', album)
+        album = re.sub(r'\bOST\b', '', album)
+        # album = re.sub(r'[:[(][^:]*(Original|OST).*', '',
+        #               album, flags=re.IGNORECASE).strip()
 
         album = re.sub(':', '', album)
         artist = re.sub(':', '', artist)
@@ -104,7 +109,7 @@ def get_track_features(
             continue
 
         if not len(result['albums']['items']):
-            with open('../logs/query_not_in_spotify_catalog_noedition2', 'a') as f:
+            with open('../logs/query_not_in_spotify_catalog_ost2', 'a') as f:
                 f.write(doc['url']+'\n')
             continue
 
