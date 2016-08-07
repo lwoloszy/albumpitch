@@ -1,5 +1,6 @@
 import os
 import sys
+from unidecode import unidecode
 from flask import render_template, session, redirect, url_for, current_app
 from flask import request
 from flask import jsonify
@@ -36,15 +37,23 @@ def index():
         cmd = """
         SELECT DISTINCT url, artist, album FROM pitchfork
         WHERE concat_ws(': ', artist, album) ilike :album_query
+        or concat_ws(' ', artist, album) ilike :album_query
+        or concat_ws(': ', artist_clean, album_clean) ilike :clean_query
+        or concat_ws(' ', artist_clean, album_clean) ilike :clean_query
         """
         album_query = u'%{:s}%'.format(album_query)
-        cur = db.engine.execute(text(cmd), album_query=album_query)
+        clean_query = unidecode(album_query)
+        cur = db.engine.execute(text(cmd),
+                                album_query=album_query,
+                                clean_query=clean_query)
         results = cur.fetchall()
 
         if len(results) == 0:
-            return render_template('index.html', album_list=[])
+            return render_template('index.html',
+                                   no_result_query=album_query.strip('%'),
+                                   album_list=[])
 
-        album_query = '{:s}: {:s}'.format(results[0][1], results[0][2])
+        album_query = u'{:s}: {:s}'.format(results[0][1], results[0][2])
         urls, sims = gen_recc_aq(results[0][0], n_recc)
     elif keyword_query:
         urls, sims = gen_recc_kq(keyword_query, n_recc)
