@@ -373,6 +373,39 @@ def print_recommendations(df, svd_trans, album_idx, n=25):
     print df_temp[['url', 'genres', 'sim_scores']][::-1]
 
 
+def print_recommendations_kmeans(df, km, svd_trans, album_idx, n=25, min_n=2000):
+    '''
+    Prints list of recommended albums with kmeans preselect
+
+    Args:
+        df: dataframe with Pitchfork reviews
+        km: fitted sklearn KMeans object
+        svd_trans: the low dimensional representation of each review
+        album_idx: the iloc value of album for which to generate reccs
+        n: number of albums to recommend
+        min_n: min number of samples to preselect with kmeans
+    Returns:
+        None
+
+    '''
+    sims_clusters = cosine_similarity(svd_trans[album_idx, :].reshape(1, -1),
+                                      km.cluster_centers_).flatten()
+    cluster_assgns = km.predict(svd_trans)
+    idx = []
+    for cluster in np.argsort(sims_clusters)[::-1]:
+        idx.extend(np.where(cluster_assgns == cluster)[0])
+        if len(idx) > min_n:
+            break
+    sel = np.bool_(np.ones(len(svd_trans)))
+    sel[idx] = 0
+
+    sims = cosine_similarity(svd_trans[album_idx, :].reshape(1, -1), svd_trans)
+    sims[:, sel] = -1
+    df_temp = df.iloc[np.argsort(sims).flatten()[-n:]]
+    df_temp['sim_scores'] = np.sort(sims.flatten())[-n:]
+    print df_temp[['url', 'genres', 'sim_scores']][::-1]
+
+
 def print_components(tfidf, svd, svd_trans, df,
                      n_comp=10, n_words=10, n_docs=10):
     '''
