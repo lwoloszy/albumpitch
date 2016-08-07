@@ -1,8 +1,13 @@
+import os
+import dill
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.decomposition import LatentDirichletAllocation
 
 import text_preprocess as textpre
+
+basedir = os.path.dirname(os.path.abspath(__file__))
 
 
 def extended_tfidf(df):
@@ -96,3 +101,16 @@ def extended_lda(df):
     lda_trans = lda.fit_transform(tfidf_trans)
 
     return tfidf, tfidf_trans, lda, lda_trans
+
+
+def save_models(urls, tfidf, svd, svd_trans):
+    path = basedir + '/../flask_app/app/main/models/'
+    np.save(path + 'urls.npy', urls)
+    np.save(path + 'svd_trans.npy', svd_trans)
+    save_dill(path + 'tfidf.dill', tfidf)
+    save_dill(path + 'svd.dill', svd)
+
+
+def save_dill(filename, obj):
+    with open(filename, 'w') as f:
+        f.write(dill.dumps(obj))
