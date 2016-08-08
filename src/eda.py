@@ -415,8 +415,10 @@ def print_components(tfidf, svd, svd_trans, df,
         tfidf: fitted sklearn TfidfVectorizer object
         svd: fitted sklearn TruncatedSVD object
         svd_trans: the low dimensional representation of each review
-        album_idx: the iloc value of album for which to generate reccs
-        n: number of albums to recommend
+        df: dataframe that included album names
+        n_comp: number of components to print (default=10)
+        n_words: number of words for each component to print (default=10)
+        n_docs: number of documents for each component to print (default=10)
     Returns:
         None
 
