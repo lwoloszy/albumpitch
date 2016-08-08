@@ -62,7 +62,7 @@ def create_lsi(dictionary, corpus_tfidf, num_topics=200):
 
 def create_lda(dictionary, corpus, num_topics=100, passes=1):
     lda = models.LdaModel(corpus, id2word=dictionary,
-                          num_topics=100, passes=passes)
+                          num_topics=num_topics, passes=passes)
     corpus_lda = lda[corpus]
     return lda, corpus_lda
 
