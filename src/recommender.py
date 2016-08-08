@@ -1,7 +1,9 @@
 import os
 import dill
 import numpy as np
+import eda
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.decomposition import LatentDirichletAllocation
 
@@ -10,13 +12,17 @@ import text_preprocess as textpre
 basedir = os.path.dirname(os.path.abspath(__file__))
 
 
-def extended_tfidf(df):
+def extended_tfidf(df, norm='l2', use_idf=True, sublinear_tf=False):
     '''
     Trains an extended TFIDF model with custom text preprocessor
     and custom tokenizer
 
     Args:
         df: dataframe with Pitchfork reviews
+        norm: the norm to use in tfidf (default=l2)
+        use_idf: whether to use idf in tfidf (default=True)
+        sublinear_tf: log transform tf counts (default=False)
+
     Returns:
         tfidf: sklearn fitted TfidfVectorizer
         tfidf_trans: sparse matrix with tfidf transformed data
@@ -52,8 +58,11 @@ def extended_tfidf(df):
     ctok = textpre.CustomTokenizer(stopset, stemmer)
 
     tfidf = TfidfVectorizer(stop_words=stopset,
-                            preprocessor=ctpre, tokenizer=ctok,
-                            max_df=0.75, min_df=5, sublinear_tf=True)
+                            preprocessor=ctpre,
+                            tokenizer=ctok,
+                            max_df=0.75, min_df=5,
+                            sublinear_tf=sublinear_tf,
+                            use_idf=use_idf, norm=norm)
     tfidf_trans = tfidf.fit_transform(entries)
     return tfidf, tfidf_trans
 
@@ -65,6 +74,7 @@ def extended_lsi(df, n_components=200):
 
     Args:
         df: dataframe with Pitchfork reviews
+        n_components: number of components in LSI model
     Returns:
         tfidf: sklearn fitted TfidfVectorizer
         tfidf_trans: sparse matrix with tfidf transformed data
@@ -73,7 +83,7 @@ def extended_lsi(df, n_components=200):
     '''
 
     print('Starting TfIdf')
-    tfidf, tfidf_trans = extended_tfidf(df)
+    tfidf, tfidf_trans = extended_tfidf(df, sublinear_tf=True)
 
     print('Starting SVD')
     svd = TruncatedSVD(n_components=n_components)
@@ -82,25 +92,36 @@ def extended_lsi(df, n_components=200):
     return tfidf, tfidf_trans, svd, svd_trans
 
 
-def extended_lda(df):
+def extended_lda(df, n_topics=200):
     '''
     Trains an extended LDA model with custom text preprocessor
     and custom tokenizer
 
     Args:
         df: dataframe with Pitchfork reviews
+        n_topics: number of topis in LDA model
     Returns:
         tfidf: sklearn fitted TfidfVectorizer
-        tfidf_trans: sparse matrix with tfidf transformed data
+        tfidf_trans: sparse matrix with tf! transformed data
         lda: sklearn fitted LatentDirichletAllocation
         lda_trans: dense array with lda transformed data
     '''
 
-    tfidf, tfidf_trans = extended_tfidf(df)
-    lda = LatentDirichletAllocation(n_topics=100, max_iter=5)
+    print('Starting TfIdf')
+    # for LDA, use raw counts; that is, tfidf with appropriate parameters
+    tfidf, tfidf_trans = extended_tfidf(df, use_idf=False, norm=None)
+
+    print('Starting LDA')
+    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=5)
     lda_trans = lda.fit_transform(tfidf_trans)
 
     return tfidf, tfidf_trans, lda, lda_trans
+
+
+def train_and_save_models(n_components=200):
+    df = eda.get_documents()
+    tfidf, tfidf_trans, svd, svd_trans = extended_lsi(df, n_components)
+    save_models(df['urls'].values, tfidf, svd, svd_trans)
 
 
 def save_models(urls, tfidf, svd, svd_trans):
