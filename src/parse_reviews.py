@@ -1,3 +1,4 @@
+import argparse
 import re
 from pymongo import MongoClient
 from datetime import datetime
@@ -36,7 +37,7 @@ def parse_reviews(website):
                 elif website == 'tinymixtapes':
                     parse_func = parse_tinymixtapes
 
-                record = parse_func(doc['html'])
+                record = parse_func(doc['html'], parser)
 
                 coll.update_one(
                     {'_id': doc_id},
@@ -114,7 +115,7 @@ def parse_pitchfork(html, parser='lxml'):
     return out
 
 
-def parse_residentadvisor(html):
+def parse_residentadvisor(html, parser):
     """
     Parses a single residentadvisor review using BeautifulSoup
 
@@ -319,3 +320,14 @@ def parse_tinymixtapes(html, parser):
         out['eureka'] = True
 
     return out
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Parse raw html pages of music reviews')
+    parser.add_argument('website', type=str,
+                        help='website which to parse')
+
+    args = vars(parser.parse_args())
+    website = args['website']
+    parse_reviews(website)
