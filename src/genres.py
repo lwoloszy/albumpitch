@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -92,7 +93,10 @@ def show_lsi(tfidf, svd, svd_trans,
     '''
 
     components = svd.components_
-    words = np.array(tfidf.get_feature_names())
+    words = tfidf.get_feature_names()
+    words = prettify(words)
+    words = np.array(words)
+
     fig = plt.figure(figsize=(10, 8))
 
     for i, component in enumerate(components[0:n_comp], 1):
@@ -106,6 +110,7 @@ def show_lsi(tfidf, svd, svd_trans,
 
         # Make a figure and axes with dimensions as desired.
         ax = fig.add_subplot(2, 5, i)
+        ax.set_title('Component {:d}'.format(i))
 
         # Set the colormap and norm to correspond to the data for which
         # the colorbar will be used.
@@ -121,7 +126,7 @@ def show_lsi(tfidf, svd, svd_trans,
         colors = np.r_[np.repeat(colors[0], n_words),
                        np.repeat(colors[-1], n_words)]
 
-        cb.set_ticks(np.linspace(mn, mx, n_words*2))
+        cb.set_ticks(np.linspace(mn, mx, n_words*2+2)[1:-1])
         cb.ax.tick_params(labelsize=10)
         for color, tick in zip(colors, cb.ax.get_yticklabels()):
             tick.set_color(color)
@@ -162,7 +167,7 @@ def explore_k(svd_trans, k_range):
 
 def kmeans(tfidf, svd, svd_trans, k=200, n_words=10):
     '''
-    Performs k-means clustering on svd transformed data
+    Performs k-means clustering on svd transformed data and plots it
 
     Args:
         tfidf: sklearn fitted TfidfVectorizer
@@ -184,6 +189,8 @@ def kmeans(tfidf, svd, svd_trans, k=200, n_words=10):
     order_centroids = original_space_centroids.argsort()[:, ::-1]
 
     terms = tfidf.get_feature_names()
+    terms = prettify(terms)
+    terms = np.array(terms)
     fig = plt.figure(figsize=(10, 8))
     for i in range(10):
         print("Cluster {:d}:".format(i))
@@ -193,6 +200,7 @@ def kmeans(tfidf, svd, svd_trans, k=200, n_words=10):
 
         # Make a figure and axes with dimensions as desired.
         ax = fig.add_subplot(2, 5, i+1)
+        ax.set_title('Cluster {:d}'.format(i+1))
 
         component = order_centroids[i]
         cmap = plt.cm.Purples
@@ -212,4 +220,23 @@ def kmeans(tfidf, svd, svd_trans, k=200, n_words=10):
             tick.set_color(color)
             tick.set_fontsize(14)
         cb.set_ticklabels(np.array(terms)[order_centroids[i, :n_words][::-1]])
+    plt.tight_layout()
     return km
+
+
+def prettify(words):
+    '''
+    Re-format my mangling of words back to nice looking ones
+
+    Args:
+        words: list of words
+    Returns:
+        out: reformatted list of words
+    '''
+
+    words = [word.replace('__ampersand__', '&') for word in words]
+    words = [word.replace('__dollar_sign__', '$') for word in words]
+    words = [word.replace('__exclamation__', '!') for word in words]
+    words = [word.replace('__s', 's') for word in words]
+    words = [word.replace('_', ' ') for word in words]
+    return words
