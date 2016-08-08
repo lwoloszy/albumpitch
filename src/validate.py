@@ -158,7 +158,8 @@ def plot_af_diffs(all_audio_diffs):
         mean_diff = df.groupby(df.index).mean()[:].values.flatten()
         sem_diff = df.groupby(df.index).sem()[:].values.flatten()
         ax = fig.add_subplot(3, 3, i+1)
-        plot_indiv_diff(ax, mean_diff, sem_diff, LABEL_DICT[feature_name],
+        plot_indiv_diff(ax, mean_diff, sem_diff,
+                        LABEL_DICT[feature_name],
                         colors[i])
         if i != 6:
             # ax.xaxis.set_major_formatter(NullFormatter())
@@ -277,7 +278,7 @@ def plot_indiv_diff(ax, y, y_e, y_label, color):
         None
     """
 
-    x = np.arange(len(y))
+    x = np.arange(1, len(y)+1)
     ax.add_line(plt.Line2D(x, y, color=color))
     ax.fill_between(x, y-y_e, y+y_e, color=color, alpha=0.5)
     ax.set_ylabel(y_label)
