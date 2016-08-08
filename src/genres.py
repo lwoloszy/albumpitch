@@ -7,6 +7,7 @@ from sklearn.cross_validation import train_test_split
 from sklearn.manifold import MDS
 from sklearn.metrics.pairwise import cosine_distances
 from sklearn.cluster import KMeans
+from sklearn.preprocessing import Normalizer
 
 sns.set_style('ticks')
 
@@ -144,11 +145,14 @@ def explore_k(svd_trans, k_range):
     '''
 
     scores = []
+    # spherical kmeans, so normalize
+    normalizer = Normalizer()
+    norm_data = normalizer.fit_transform(svd_trans)
     for k in np.arange:
         km = KMeans(n_clusters=k, init='k-means++', max_iter=100, n_init=1,
                     verbose=2)
-        km.fit(svd_trans)
-        scores.append(-1*km.score(svd_trans))
+        km.fit(norm_data)
+        scores.append(-1*km.score(norm_data))
     plt.plot(k_range, scores)
     plt.xlabel('# of clusters')
     plt.ylabel('Inertia')
@@ -169,9 +173,12 @@ def kmeans(tfidf, svd, svd_trans, k=200, n_words=10):
         km: the fitted KMean object
     '''
 
+    # spherical kmeans, so normalize
+    normalizer = Normalizer()
+    norm_data = normalizer.fit_transform(svd_trans)
     km = KMeans(n_clusters=k, init='k-means++', max_iter=100, n_init=5,
                 verbose=2)
-    km.fit(svd_trans)
+    km.fit(norm_data)
 
     original_space_centroids = svd.inverse_transform(km.cluster_centers_)
     order_centroids = original_space_centroids.argsort()[:, ::-1]
