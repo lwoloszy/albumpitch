@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import argparse
 import re
 import json
 import time
@@ -65,8 +66,8 @@ def get_track_features(
         if i % 50 == 0:
             print('Got audio features for {:d} albums'.format(i))
 
-        # artist = ' '.join(doc['artists'])
-        artist = doc['artists'][0]
+        artist = ' '.join(doc['artists'])
+        # artist = doc['artists'][0]
         album = doc['album']
 
         # spotify doesn't like the EP ending so remove it
@@ -80,7 +81,7 @@ def get_track_features(
         # album = re.sub(r'[:[(][^:]*(Edition|Remaster|Reissue).*', '',
         #               album, flags=re.IGNORECASE).strip()
         # album = re.sub(r'\bOST\b', 'Original Soundtrack', album)
-        album = re.sub(r'\bOST\b', '', album)
+        # album = re.sub(r'\bOST\b', '', album)
         # album = re.sub(r'[:[(][^:]*(Original|OST).*', '',
         #               album, flags=re.IGNORECASE).strip()
 
@@ -174,7 +175,6 @@ def coregister_albums():
     Returns:
         None
     """
-
 
     client = MongoClient()
 
@@ -304,3 +304,38 @@ def determine_best_match(pitch_album, spotify_albums):
             print(pitchfork_name.encode('utf-8'), a_name.encode('utf-8'))
 
     return None
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='''
+        Gets audio features from Spotify
+        and coregisters them with Pitchfork albums
+        ''')
+
+    parser.add_argument('--credentials', type=str,
+                        default='/Users/lukewoloszyn/.apikeys/spotify.json',
+                        help='filepath of spotify api credentials')
+    parser.add_argument('--max_retries', default=10, type=int,
+                        help='''
+                        max number of retries when executing spotify calls
+                        ''')
+
+    parser.add_argument('func', type=str,
+                        help='''
+                        Whether to get track features or coregister them.
+                        Has to be one of get_track_features or
+                        coregister_albums
+                        ''')
+
+    args = vars(parser.parse_args())
+    credentials = args['credentials']
+    max_retries = args['max_retries']
+    func = args['func']
+
+    if func == 'get_track_features':
+        get_track_features(creds_filepath=credentials, max_retries=max_retries)
+    elif func == 'coregister_albums':
+        coregister_albums()
+    else:
+        print('Invalid func specified')
