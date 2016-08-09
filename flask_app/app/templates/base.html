@@ -32,7 +32,7 @@
       </div>
       <div class="navbar-collapse collapse">
         <ul class="nav navbar-nav">
-          <li><a href="{{ url_for('main.index') }}">Presentation</a></li>
+          <li><a href="https://www.github.com/lwoloszy/albumpitch">Github</a></li>
         </ul>
       </div>
     </div>
@@ -47,9 +47,17 @@
         {{ message }}
     </div>
     {% endfor %}
-
     {% block page_content %}{% endblock %}
 </div>
+
+{% block footer %}
+<footer class="footer">
+  <div class="container">
+    <p class="text-muted" style="margin-top: 20px; padding-right: 5px; text-align: right">All content property of www.pitchfork.com</p>
+  </div>
+</footer>
+{% endblock %}
+
 {% endblock %}
 
 {% block scripts %}
