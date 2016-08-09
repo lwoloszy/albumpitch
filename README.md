@@ -12,22 +12,35 @@ python src/scrapers/pitchfork_scraper.py
 ```
 from the root directory to get the raw htmls and then run
 ```shell
-python src/parse_reviews pitchfork
+python src/parse_reviews.py pitchfork
 ```
 to put the data in a nice, clean format. Note, you'll need MongoDB and pymongo installed on your local machine to store and process the data.
 
-##### Figure 1: Basic descriptive statistics of reviews scraped from Pitchfork
+**_Figure 1: Basic descriptive statistics of reviews scraped from Pitchfork._**
+
 Genre distribution         |  # of reviews by reviewer | Review length distribution
 :-------------------------:|:-------------------------:|:-------------------------:
 ![](figures/genre_dist.png) | ![](figures/reviewer_dist.png) | ![](figures/review_length_dist.png)
 
 #### Spotify API
-In order to run some validation tests, I used Spotify's audio features API call. This was a multistage process where I first tried to find the album id in the Spotify catalog corresponding to the Pitchfork album whose audio features I was interested in, then I would find all the track ids for that album, and finally I would retrieve the audio features for each and every track id. To get all this data, run ```shell python src/spotify.py get_track_features```. To do so, you'll need spotipy, a nice little python package to interact with the Spotify API.
+In order to run some validation tests, I used Spotify's audio features API call. This was a multistage process where I first tried to find the album id in the Spotify catalog corresponding to the Pitchfork album whose audio features I was interested in, then I would find all the track ids for that album, and finally I would retrieve the audio features for each and every track id. To get all this data, run
+```
+python src/spotify.py get_track_features
+```
+To do so, you'll need spotipy, a nice little python package to interact with the Spotify API.
 
-Oftentimes, the call to Spotify to find an album id would result in multiple albums being returned. I needed to find the best correspondence between the Pitchfork album that seeded the query and one of the albums returned by Spotify, if any. To run this coregistration, which relied on several carefully handcrafted heuristics that you might want to play around with, run ```shell python src/spotify.py coregister_albums```. I'm not guaranteeing that this matching process is perfect, as there will be some false positive and false negatives, but I would say it's within 1-2% of what's achievable. Also, Spotify's catalog, while immense, is far from complete with respect to albums that Pitchfork has reviewed.
+Oftentimes, the call to Spotify to find an album id would result in multiple albums being returned. I needed to find the best correspondence between the Pitchfork album that seeded the query and one of the albums returned by Spotify, if any. To run this coregistration, which relied on several carefully handcrafted heuristics that you might want to play around with, run
+```
+python src/spotify.py coregister_albums
+```
+I'm not guaranteeing that this matching process is perfect, as there will be some false positive and false negatives, but I would say it's within 1-2% of what's achievable. Also, Spotify's catalog, while immense, is far from complete with respect to albums that Pitchfork has reviewed.
 
 #### PostgreSQL transfer
-Ultimately, to put the Spotify and Pitchfork data into a more quickly manipulable format, a format that was also directly transferable to Heroku, I put all this data into a PostgreSQL database. To do likewise on your local machine, run ```shell python mongo_to_sql.py```. Note, you'll need a version of PostgreSQL installed on your local machine as well as the psycopg2 driver.
+Ultimately, to put the Spotify and Pitchfork data into a more quickly manipulable format, a format that was also directly transferable to Heroku, I put all this data into a PostgreSQL database. To do likewise on your local machine, run
+```
+python mongo_to_sql.py
+```
+Note, you'll need a version of PostgreSQL installed on your local machine as well as the psycopg2 driver.
 
 ## Data analysis and modeling
 #### Primary models
@@ -36,26 +49,25 @@ My two main tools for generating album recommendation from text data were Latent
 #### Validation
 As I mentioned, earballing the recommendations was the primary means by which I evaluated the models, but I did have a few heuristics I used to gauge how well LSI was doing. For one, I visualized A LOT (again) of the hidden dimensions that LSA would produce, seeing whether they were capturing words relevant to discriminating various genres of music (where relevant was based on my own personal experience reading music reviews). One such plot is shown below. As you can see, many of the terms do cluster along obvious genres such as rock, rap, electronic and acoustic (though it should be acknowledged that many terms are also less obviously related to music per se).
 
-##### Figure 2: Top 10 LSA components from a model with 200 dimensions
+**_Figure 2: Top 10 LSA components from a model with 200 dimensions._** 
 *Each subplot shows a single hidden component discovered by LSA, with the 6 words having the heighest weight shown in red and the 6 words having the lowest weight shown in blue.*
 ![](figures/svd.png)
 
 We can go one step further and look at the clusters that k-means algorithm gives us when applied to data that has been transformed with LSI. Again, these seemed to make quite a bit of sense, reassuring me that the LSA approach in general was working.
 
-##### Figure 3: 10 random clusters discovered by k-means algorithm (clustering was done in the LSI space)
+**_Figure 3: 10 random clusters discovered by k-means algorithm (clustering was done in the LSI space)._** 
 *Each subplot shows a single k-means cluster, with the 12 words having the heighest weight shown.*
 ![](figures/kmeans.png)
 
 However, some form of external validation would be nice. For this, I turned to the audio features that I got from Spotify (via Echonest). As background, Spotify has quantified for a large collection of songs a number of subjective features, such as acousticness, danceability, energy, loudness and so on. I figured that if my recommendations were making any sense, then the further down the recommendation list we go, the more dissimilar these albums should be to the album that initiated the query. Indeed, in the figure below, you can see that this monotonic increase in audio dissimilarity as a function of recommendation rank is present for all audio features examined, suggesting that the semantic content of music reviews has, to some degree, a relationship with audio features.
 
-##### Figure 4: Audio feature differences between a seed album and a recommended album
+**_Figure 4: Audio feature differences between a seed album and a recommended album._** 
 *Audio differences are plotted as a function of recommendation rank. All the y-axis labels should have the word "difference" added to them, but for clarity, those have been omitted.*
 ![](figures/individual_afs.png)
 
 ## Web app deployment
 To package this project in a nice wrapper, I built a little web app that you can visit [here](http://www.albumpitch.com) that will produce, given either a seed album or a keyword search, a list of albums you might enjoy. A screenshot is provided below. It's not perfect by any means, as there are numerous improvements that could be made to the model, but in many instances it gives reasonable suggestions. Keep in mind, these recommendations are based solely on text information, so they're unlikely to be perfect. It really is a fun tool to play with! I've already found a few new albums through it that I like.
 
-##### Albumpitch Screenshot
 ![](figures/albumpitch.png)
 
 ## Future directions
