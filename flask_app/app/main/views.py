@@ -50,13 +50,17 @@ def index():
 
         if len(results) == 0:
             return render_template('index.html',
-                                   no_result_query=album_query.strip('%'),
+                                   no_result_aq=album_query.strip('%'),
                                    album_list=[])
 
         album_query = u'{:s}: {:s}'.format(results[0][1], results[0][2])
         urls, sims = gen_recc_aq(results[0][0], n_recc)
     elif keyword_query:
         urls, sims = gen_recc_kq(keyword_query, n_recc)
+        if sims[0] == 0:
+            return render_template('index.html',
+                                   no_result_kq=keyword_query,
+                                   album_list=[])
 
     sql_query = text("""
     DROP TABLE IF EXISTS sorted;
@@ -126,7 +130,6 @@ def gen_recc_aq(pitchfork_url, n_recc=30):
 
 
 def gen_recc_kq(kq, n_recc=30):
-    q = TFIDF.get_feature_names()
     kq_tfidf = TFIDF.transform([kq])
     kq_lsi = LSI.transform(kq_tfidf)
     cos_sims = cosine_similarity(kq_lsi.reshape(1, -1), SVD_TRANS).flatten()

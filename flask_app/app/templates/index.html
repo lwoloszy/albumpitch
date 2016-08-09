@@ -78,14 +78,23 @@
     <b>{{seed_word}}</b>
   </div>
 </div>
-{% elif no_result_query %}
+{% elif no_result_aq %}
 <div class="container-fluid header-txt">
   <div class="row-fluid buffer">
     <p style="color: red"> Sorry, your search for...</p>
-    <p> <b> {{no_result_query}} </b> </p>
+    <p> <b> {{no_result_aq}} </b> </p>
     <p style="color: red">did not turn up any results.</p>
   </div>
 </div>
+{% elif no_result_kq %}
+<div class="container-fluid header-txt">
+  <div class="row-fluid buffer">
+    <p style="color: red"> Sorry, your search for...</p>
+    <p> <b> {{no_result_kq}} </b> </p>
+    <p style="color: red">did not turn up any results. Was your query too generic?</p>
+  </div>
+</div>
+
 {% else %}
 <img src="{{url_for('static', filename='barnett_background.jpg')}}" class="img-responsive" width=100% style="max-height: 500px">
 {% endif %}
