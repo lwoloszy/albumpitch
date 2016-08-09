@@ -127,6 +127,7 @@ def show_lsi(tfidf, svd, svd_trans,
                        np.repeat(colors[-1], n_words)]
 
         cb.set_ticks(np.linspace(mn, mx, n_words*2+2)[1:-1])
+        cb.ax.yaxis.set_tick_params(size=0)
         cb.ax.tick_params(labelsize=10)
         for color, tick in zip(colors, cb.ax.get_yticklabels()):
             tick.set_color(color)
@@ -215,6 +216,7 @@ def kmeans(tfidf, svd, svd_trans, k=200, n_words=10):
         colors = np.repeat(colors[-1], n_words)
 
         cb.set_ticks(np.linspace(mn, mx, n_words+2)[1:-1])
+        cb.ax.yaxis.set_tick_params(size=0)
         cb.ax.tick_params(labelsize=10)
         for color, tick in zip(colors, cb.ax.get_yticklabels()):
             tick.set_color(color)
