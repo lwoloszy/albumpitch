@@ -8,8 +8,10 @@ With the advent of online music streaming services like Spotify, Apple Music, Ti
 #### Pitchfork site
 As with any data science app, this project began data collection. I scraped the entire Pitchfork site, which at the time had 17833 reviews spanning 9 genres. Some basic exploratory graphs summarizing the review meta-information are shown below. If you'd like to obtain and play with this data yourself, simply run ```python src/scrapers/pitchfork_scraper.py``` from the root directory to get the raw htmls and then run ```python src/parse_reviews pitchfork``` to put the data in a nice, clean format. Note, you'll need MongoDB and pymongo installed on your local machine to store and process the data.
 
-##### Figure 1 - Some very basic descriptive statistics of reviews scraped from Pitchfork.
-![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/genre_dist.png) ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/reviewer_dist.png) ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/review_length_dist.png)
+##### Figure 1 - Some basic descriptive statistics of reviews scraped from Pitchfork.
+Genre distribution         |  # of reviews by reviewer | Review length distribution
+:-------------------------:|:-------------------------:|:-------------------------:
+![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/genre_dist.png) | ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/reviewer_dist.png) ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/review_length_dist.png) | ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/genre_dist.png) 
 
 #### Spotify API
 In order to run some validation tests, I used Spotify's audio features API call. This was a multistage process where I first tried to find the album id in the Spotify catalog corresponding to the Pitchfork album whose audio features I was interested in, then I would find all the track ids for that album, and finally I would retrieve the audio features for each and every track id. To get all this data, run ```python src/spotify.py get_track_features```. To do so, you'll need spotipy, a nice little python package to interact with the Spotify API.
@@ -36,7 +38,7 @@ We can go one step further and look at the clusters that k-means algorithm gives
 
 However, some form of external validation would be nice. For this, I turned to the audio features that I got from Spotify (via Echonest). As background, Spotify has quantified for a large collection of songs a number of subjective features, such as acousticess, danceability, energy and so on. I figured that if my recommendations were making any sense, then the further down the recommendation list we go, the more dissimilar these albums should be to the album that initiated the query. Indeed, in the figure below, you can see that this monotonic increase in audio dissimilarity is present for all audio features examined, suggesting that the semantic content of music reviews has, to some degree, a relationship with audio features.
 
-##### Figure 4 - Mean audio feature difference between a seed album and a recommended album, plotted as a function of recommendation rank.
+##### Figure 4 - Audio feature differences between a seed album and a recommended album, plotted as a function of recommendation rank. All the y-axis labels should have the word "difference" added to them, but for clarity, those have been omitted.
 ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/individual_afs.png)
 
 ## Web app
