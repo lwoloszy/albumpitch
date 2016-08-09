@@ -20,7 +20,7 @@ My two main tools of attack at generating album recommendation from text data we
 #### Validation
 As I mentioned, earballing the recommendations was the primary means by which I evaluated the models, but I did have a few heuristics I used to gauge how well LSI was doing. For one, I visualized a lot of the hidden dimensions that LSA would generate, seeing whether they were capturing words relevant to discriminating various genres of music (where relevant was based on my own personal experience reading music reviews). One example such plot is shown below. 
 
-![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/svd.pdf)
+![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/svd.png)
 
 We can go one step further and look at the clusters that KMeans algorithm gives us when applied to data that has been transformed with LSI. Again, these seemed to make quite a bit of sense, reassuring me that the approach in general was working.
 
