@@ -214,7 +214,7 @@ def kmeans(tfidf, svd, svd_trans, k=200, n_words=10):
         colors = sns.color_palette('Purples', 9).as_hex()
         colors = np.repeat(colors[-1], n_words)
 
-        cb.set_ticks(np.linspace(mn, mx, n_words))
+        cb.set_ticks(np.linspace(mn, mx, n_words+2)[1:-1])
         cb.ax.tick_params(labelsize=10)
         for color, tick in zip(colors, cb.ax.get_yticklabels()):
             tick.set_color(color)
