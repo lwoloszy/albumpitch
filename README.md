@@ -11,7 +11,7 @@ As with any data science app, this project began data collection. I scraped the 
 ##### Figure 1 - Some basic descriptive statistics of reviews scraped from Pitchfork.
 Genre distribution         |  # of reviews by reviewer | Review length distribution
 :-------------------------:|:-------------------------:|:-------------------------:
-![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/genre_dist.png) | ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/reviewer_dist.png) ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/review_length_dist.png) | ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/genre_dist.png) 
+![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/genre_dist.png) | ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/reviewer_dist.png) | ![alt tag](https://raw.github.com/lwoloszy/albumpitch/master/figures/review_length_dist.png) 
 
 #### Spotify API
 In order to run some validation tests, I used Spotify's audio features API call. This was a multistage process where I first tried to find the album id in the Spotify catalog corresponding to the Pitchfork album whose audio features I was interested in, then I would find all the track ids for that album, and finally I would retrieve the audio features for each and every track id. To get all this data, run ```python src/spotify.py get_track_features```. To do so, you'll need spotipy, a nice little python package to interact with the Spotify API.
