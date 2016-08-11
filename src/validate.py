@@ -26,7 +26,7 @@ LABEL_DICT = {'acoustic': 'Acousticness',
 
 
 def get_af_diffs(df, svd_trans, func='raw', normalize=False,
-                     restrict=False, n=250):
+                 restrict=False, n=250):
     """
     Computes distances between the mean track audio features
     of a seed album and those albums recommended by a recommendation
