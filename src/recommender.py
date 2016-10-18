@@ -121,7 +121,7 @@ def extended_lda(df, n_topics=200):
 def train_and_save_models(n_components=200):
     df = eda.get_documents()
     tfidf, tfidf_trans, svd, svd_trans = extended_lsi(df, n_components)
-    save_models(df['urls'].values, tfidf, svd, svd_trans)
+    save_models(df['url'].values, tfidf, svd, svd_trans)
 
 
 def save_models(urls, tfidf, svd, svd_trans):
